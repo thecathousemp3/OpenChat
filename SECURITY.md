@@ -12,8 +12,9 @@ There is no guaranteed response time or service-level agreement. Reports will be
 
 ## Current security boundaries
 
-- Shared-room messages are relayed in plaintext through the server and are not end-to-end encrypted.
-- WebRTC encrypts transport with DTLS, but OpenChat has no reviewed end-to-end identity protocol.
+- Direct and shared-room messages are sent over browser WebRTC data channels protected in transit with DTLS. Shared-room message bodies are not relayed through the server.
+- The room server relays membership, profile metadata, and WebRTC offer/answer signaling. Peer identities and room membership are not cryptographically authenticated, so an active malicious signaling server could interfere with connection establishment.
+- WebRTC connections use no configured STUN or TURN services. NAT and firewall restrictions can prevent peers from connecting. Rooms use a bounded mesh of at most nine participants.
 - Browser local storage is not encrypted at rest.
 - Profile export files are encrypted locally with AES-GCM and PBKDF2, but password strength and safe storage remain the user's responsibility.
 - Names, avatars, and invite codes are not authenticated.

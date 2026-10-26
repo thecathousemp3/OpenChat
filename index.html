@@ -218,6 +218,21 @@
     }
     .chat-heading h1 { margin: 0; font-size: 14px; }
     .chat-heading p { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+    .header-info {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 32px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      color: #ddd;
+      background: linear-gradient(180deg, #303030, #202020);
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .header-info:hover { border-color: #999; color: #fff; background: linear-gradient(180deg, #454545, #303030); }
+    .header-info-mark { display: grid; width: 16px; height: 16px; place-items: center; border: 1px solid #888; border-radius: 50%; font-size: 10px; font-weight: 700; }
     .conversation { overflow-y: auto; padding: 22px 27px 16px; }
     .message { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 17px; }
     .message-avatar {
@@ -308,6 +323,7 @@
       .profile-actions .sidebar-action { width: 43px; }
       .sidebar-action { width: 43px; height: 37px; padding: 0; font-size: 14px; }
       .chat-header { padding: 0 12px; }
+      .header-info { min-height: 30px; padding: 4px 7px; }
       .conversation { padding: 19px 13px 13px; }
       .composer-wrap { padding: 11px 11px 12px; }
     }
@@ -403,6 +419,7 @@
             <div class="room-icon" id="roomIcon" aria-hidden="true">#</div>
             <div><h1 id="chatTitle">Global Chat</h1></div>
           </div>
+          <button class="header-info" id="aboutConnectionButton" type="button" aria-haspopup="dialog" aria-controls="aboutConnectionBackdrop" title="Learn about WebRTC and room privacy"><span class="header-info-mark" aria-hidden="true">i</span><span>About WebRTC</span></button>
         </header>
         <div class="conversation" id="conversation" aria-live="polite">
         </div>
@@ -475,6 +492,17 @@
       </form>
     </section>
   </div>
+  <div class="modal-backdrop" id="aboutConnectionBackdrop" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="aboutConnectionTitle">
+      <h2 id="aboutConnectionTitle">About WebRTC and privacy</h2>
+      <p>Shared-room messages travel directly between browsers over WebRTC data channels. Browsers use DTLS to encrypt data in transit, and room message text is not relayed through the OpenChat server.</p>
+      <p>The server still handles room membership and relays peer connection offers and answers. It also receives display names, profile pictures, and invite codes. Peer identity is not cryptographically verified; a malicious or compromised signaling server could interfere with connection setup. OpenChat has not had an independent security review.</p>
+      <p>Rooms connect each participant directly to every other participant and are limited to nine people. No STUN or TURN servers are configured, so some network setups cannot connect. WebRTC can disclose network addresses to other participants and signaling infrastructure.</p>
+      <p>Direct messages also use WebRTC. The offer and answer must be copied between contacts manually, and friend codes should be compared using a separate trusted channel.</p>
+      <p>Messages cached by this browser are stored in local storage without encryption. For sensitive conversations, use an independently reviewed messaging application.</p>
+      <div class="modal-actions"><button id="closeAboutConnection" type="button">Close</button></div>
+    </section>
+  </div>
   <div class="toast" id="toast" role="status" hidden></div>
 
   <script>
@@ -502,6 +530,10 @@
     let roomReconnectTimer = null;
     let roomReconnectDelay = 1000;
     let roomJoined = false;
+    let joinedRoom = null;
+    let roomPeerId = null;
+    const roomPeers = new Map();
+    const roomMembers = new Map();
     let sharedRooms = ["Global Chat"];
     let activeView = "room";
 
@@ -1035,29 +1067,48 @@
     }
 
     function updateRoomStatus() {
-      const connected = roomSocket?.readyState === WebSocket.OPEN;
       if (activeView === "room") {
-        document.getElementById("connectionLabel").textContent = connected ? "Online" : "";
-        document.getElementById("statusIndicator").classList.toggle("online", connected);
+        const connectedPeers = [...roomPeers.values()].filter((peer) => peer.channel?.readyState === "open").length;
+        document.getElementById("connectionLabel").textContent = roomJoined
+          ? roomMembers.size ? `WebRTC ${connectedPeers}/${roomMembers.size} connected` : "Waiting for peers"
+          : "";
+        document.getElementById("statusIndicator").classList.toggle("online", roomJoined);
       }
     }
 
+    function closeRoomMesh() {
+      for (const peer of roomPeers.values()) {
+        peer.intentionalClose = true;
+        peer.channel?.close();
+        peer.connection.close();
+      }
+      roomPeers.clear();
+      roomMembers.clear();
+      joinedRoom = null;
+      roomPeerId = null;
+    }
+
     function joinActiveRoom() {
-      if (activeView !== "room" || roomSocket?.readyState !== WebSocket.OPEN) return;
+      if (roomSocket?.readyState !== WebSocket.OPEN) return;
+      closeRoomMesh();
+      roomJoined = false;
+      joinedRoom = activeRoom;
       roomSocket.send(JSON.stringify({
         type: "join",
-        room: activeRoom,
+        room: joinedRoom,
         code: appState.identity.code,
-          inviteCode: appState.identity.inviteCode,
-          name: updateProfileName(),
-          avatar: appState.identity.avatar
+        inviteCode: appState.identity.inviteCode,
+        name: updateProfileName(),
+        avatar: appState.identity.avatar
       }));
-      roomJoined = false;
+      updateRoomStatus();
     }
 
     function selectRoom(name) {
       activeView = "room";
       activePeerId = null;
+      closeRoomMesh();
+      roomJoined = false;
       activeRoom = name;
       document.querySelectorAll(".nav-button").forEach((item) => {
         item.classList.toggle("active", item.dataset.room === name);
@@ -1088,6 +1139,165 @@
       if (activeView === "room" && !sharedRooms.includes(activeRoom)) selectRoom("Global Chat");
     }
 
+    function validRoomMember(member) {
+      return member &&
+        typeof member.id === "string" &&
+        member.id.length <= 64 &&
+        member.id !== roomPeerId &&
+        normalizeFriendCode(member.code) === member.code &&
+        normalizeFriendCode(member.inviteCode) === member.inviteCode &&
+        typeof member.name === "string" &&
+        member.name.length > 0 &&
+        member.name.length <= 32 &&
+        (member.avatar === null || isValidAvatar(member.avatar));
+    }
+
+    function shouldInitiateRoomPeer(member) {
+      if (appState.identity.code !== member.code) return appState.identity.code < member.code;
+      return roomPeerId < member.id;
+    }
+
+    function addRoomMember(member) {
+      if (!validRoomMember(member) || roomMembers.has(member.id)) return;
+      roomMembers.set(member.id, member);
+      if (!("RTCPeerConnection" in window)) {
+        showToast("This browser does not support encrypted WebRTC room connections.");
+        updateRoomStatus();
+        return;
+      }
+      const peer = {
+        ...member,
+        room: joinedRoom,
+        connection: new RTCPeerConnection({ iceServers: [] }),
+        channel: null,
+        intentionalClose: false
+      };
+      roomPeers.set(peer.id, peer);
+      peer.connection.ondatachannel = (event) => {
+        if (event.channel.label !== "openchat-room") {
+          event.channel.close();
+          return;
+        }
+        attachRoomDataChannel(peer, event.channel);
+      };
+      peer.connection.onconnectionstatechange = () => {
+        updateRoomStatus();
+        if (peer.connection.connectionState === "failed" && !peer.intentionalClose) {
+          showToast(`Could not connect directly to ${peer.name}. Their network may block peer-to-peer connections.`);
+        }
+        if (peer.connection.connectionState === "closed" && !peer.intentionalClose) {
+          roomPeers.delete(peer.id);
+          updateRoomStatus();
+        }
+      };
+      if (shouldInitiateRoomPeer(peer)) void createRoomOffer(peer);
+      updateRoomStatus();
+    }
+
+    async function sendRoomSignal(peer, description) {
+      if (
+        roomSocket?.readyState !== WebSocket.OPEN ||
+        !roomJoined ||
+        peer.room !== joinedRoom ||
+        roomPeers.get(peer.id) !== peer
+      ) throw new Error("The room signaling connection closed before the peer connection was ready.");
+      roomSocket.send(JSON.stringify({
+        type: "room-signal",
+        target: peer.id,
+        signal: { type: description.type, sdp: description.sdp }
+      }));
+    }
+
+    async function createRoomOffer(peer) {
+      try {
+        peer.channel = peer.connection.createDataChannel("openchat-room", { ordered: true });
+        attachRoomDataChannel(peer, peer.channel);
+        const offer = await peer.connection.createOffer();
+        await peer.connection.setLocalDescription(offer);
+        await waitForIceGathering(peer.connection);
+        if (roomPeers.get(peer.id) === peer) await sendRoomSignal(peer, peer.connection.localDescription);
+      } catch (error) {
+        if (roomPeers.get(peer.id) === peer && !peer.intentionalClose) {
+          showToast(error.message || `Could not establish a WebRTC connection to ${peer.name}.`);
+        }
+      }
+    }
+
+    async function handleRoomSignal(payload) {
+      if (
+        payload.room !== joinedRoom ||
+        !roomJoined ||
+        typeof payload.from !== "string" ||
+        !payload.signal ||
+        !["offer", "answer"].includes(payload.signal.type) ||
+        typeof payload.signal.sdp !== "string" ||
+        payload.signal.sdp.length > 50000
+      ) return;
+      const member = roomMembers.get(payload.from);
+      if (!member) return;
+      const peer = roomPeers.get(payload.from);
+      if (!peer) return;
+      try {
+        if (payload.signal.type === "offer") {
+          if (shouldInitiateRoomPeer(peer) || peer.connection.remoteDescription) return;
+          await peer.connection.setRemoteDescription(payload.signal);
+          const answer = await peer.connection.createAnswer();
+          await peer.connection.setLocalDescription(answer);
+          await waitForIceGathering(peer.connection);
+          if (roomPeers.get(peer.id) === peer) await sendRoomSignal(peer, peer.connection.localDescription);
+          return;
+        }
+        if (!shouldInitiateRoomPeer(peer) || peer.connection.signalingState !== "have-local-offer") return;
+        await peer.connection.setRemoteDescription(payload.signal);
+      } catch (error) {
+        showToast(error.message || `Could not establish a WebRTC connection to ${peer.name}.`);
+      }
+    }
+
+    function addRoomMessage(peer, payload) {
+      if (
+        peer.room !== joinedRoom ||
+        roomPeers.get(peer.id) !== peer ||
+        typeof payload.text !== "string" ||
+        !payload.text.trim() ||
+        payload.text.length > 500
+      ) return;
+      const message = {
+        code: peer.code,
+        name: peer.name,
+        emoji: "?",
+        avatar: peer.avatar,
+        text: payload.text,
+        own: false,
+        timestamp: Number.isFinite(payload.timestamp) ? payload.timestamp : Date.now()
+      };
+      const history = appState.roomMessages[peer.room] || (appState.roomMessages[peer.room] = []);
+      history.push(message);
+      if (history.length > 300) history.splice(0, history.length - 300);
+      saveState();
+      if (activeView === "room" && activeRoom === peer.room) appendMessage(message);
+    }
+
+    function attachRoomDataChannel(peer, channel) {
+      peer.channel = channel;
+      channel.onopen = updateRoomStatus;
+      channel.onmessage = (event) => {
+        if (typeof event.data !== "string" || event.data.length > 8192) return;
+        let payload;
+        try {
+          payload = JSON.parse(event.data);
+        } catch {
+          showToast(`Received unreadable data from ${peer.name}.`);
+          return;
+        }
+        if (payload?.type === "room-message" && payload.room === peer.room) {
+          addRoomMessage(peer, payload);
+        }
+      };
+      channel.onclose = updateRoomStatus;
+      channel.onerror = () => showToast(`The encrypted room connection to ${peer.name} encountered an error.`);
+    }
+
     function handleRoomServerMessage(raw) {
       let payload;
       try {
@@ -1107,52 +1317,64 @@
         showToast("Room created.");
         return;
       }
-      if (payload.type === "joined" && payload.room === activeRoom && activeView === "room") {
+      if (payload.type === "joined" && payload.room === joinedRoom) {
         roomJoined = true;
+        roomPeerId = payload.peerId;
+        if (Array.isArray(payload.peers)) {
+          for (const peer of payload.peers) addRoomMember(peer);
+        }
         updateRoomStatus();
         return;
       }
       if (
-        payload.type === "profile" &&
-        typeof payload.room === "string" &&
+        payload.type === "room-peer-joined" &&
+        payload.room === joinedRoom
+      ) {
+        addRoomMember(payload.peer);
+        return;
+      }
+      if (payload.type === "room-peer-left" && payload.room === joinedRoom) {
+        roomMembers.delete(payload.peerId);
+        const peer = roomPeers.get(payload.peerId);
+        if (peer) {
+          peer.intentionalClose = true;
+          roomPeers.delete(payload.peerId);
+          peer.channel?.close();
+          peer.connection.close();
+        }
+        updateRoomStatus();
+        return;
+      }
+      if (
+        payload.type === "room-peer-profile" &&
+        payload.room === joinedRoom &&
+        typeof payload.peerId === "string" &&
         typeof payload.code === "string" &&
         typeof payload.name === "string" &&
         (payload.avatar === null || isValidAvatar(payload.avatar))
       ) {
+        const peer = roomPeers.get(payload.peerId);
+        const member = roomMembers.get(payload.peerId);
+        if (!peer || !member || peer.code !== payload.code) return;
+        peer.name = payload.name.trim().slice(0, 32) || "New peer";
+        peer.inviteCode = payload.inviteCode;
+        peer.avatar = payload.avatar;
+        member.name = peer.name;
+        member.inviteCode = peer.inviteCode;
+        member.avatar = peer.avatar;
         const history = appState.roomMessages[payload.room] || [];
         for (const message of history) {
           if (message.code === payload.code) {
-            message.name = payload.name;
-            message.avatar = payload.avatar;
+            message.name = peer.name;
+            message.avatar = peer.avatar;
           }
         }
         saveState();
         if (activeView === "room" && activeRoom === payload.room) renderRoomConversation(activeRoom);
         return;
       }
-      if (
-        payload.type === "room-message" &&
-        typeof payload.room === "string" &&
-        typeof payload.code === "string" &&
-        typeof payload.name === "string" &&
-        typeof payload.text === "string" &&
-        payload.text.length <= 500 &&
-        Number.isFinite(payload.timestamp)
-      ) {
-        const message = {
-          code: payload.code,
-          name: payload.name,
-          emoji: "?",
-          avatar: isValidAvatar(payload.avatar) ? payload.avatar : null,
-          text: payload.text,
-          own: payload.code === appState.identity.code,
-          timestamp: payload.timestamp
-        };
-        const history = appState.roomMessages[payload.room] || (appState.roomMessages[payload.room] = []);
-        history.push(message);
-        if (history.length > 300) history.splice(0, history.length - 300);
-        saveState();
-        if (activeView === "room" && activeRoom === payload.room) appendMessage(message);
+      if (payload.type === "room-signal") {
+        void handleRoomSignal(payload);
         return;
       }
       if (payload.type === "error" && typeof payload.message === "string") {
@@ -1168,7 +1390,6 @@
       const protocol = location.protocol === "https:" ? "wss:" : "ws:";
       roomSocket = new WebSocket(`${protocol}//${location.host}/ws`);
       roomSocket.addEventListener("open", () => {
-        roomJoined = false;
         roomReconnectDelay = 1000;
         updateRoomStatus();
         roomSocket.send(JSON.stringify({ type: "list-rooms" }));
@@ -1180,6 +1401,7 @@
       });
       roomSocket.addEventListener("close", () => {
         roomJoined = false;
+        closeRoomMesh();
         updateRoomStatus();
         clearTimeout(roomReconnectTimer);
         roomReconnectTimer = setTimeout(connectRoomServer, roomReconnectDelay);
@@ -1190,7 +1412,6 @@
     function selectPeer(peer) {
       activeView = "peer";
       activePeerId = peer.id;
-      activeRoom = peer.name;
       document.querySelectorAll(".nav-button").forEach((item) => item.classList.remove("active"));
       document.getElementById("chatTitle").textContent = peer.name;
       setAvatar(document.getElementById("roomIcon"), peer.avatar, peer.name.trim().slice(0, 1).toUpperCase() || "?");
@@ -1337,7 +1558,7 @@
           avatar: appState.identity.avatar
         }));
         closeConnectionDialog();
-        showToast("Direct DTLS-encrypted connection opened. Verifying friend code…");
+        showToast("Direct WebRTC connection opened. Verifying friend code…");
       };
       channel.onmessage = (event) => handlePeerPayload(peer, event.data);
       channel.onclose = () => {
@@ -1529,15 +1750,39 @@
       const text = input.value.trim();
       if (!text) return;
       if (activeView === "room") {
-        if (roomSocket?.readyState !== WebSocket.OPEN) {
+        if (!roomJoined || roomSocket?.readyState !== WebSocket.OPEN) {
           showToast("Shared chat is reconnecting. Your message was not sent.");
           return;
         }
+        const recipients = [...roomMembers.keys()].map((id) => roomPeers.get(id));
+        if (!recipients.length) {
+          showToast("No other participants are connected to this room yet.");
+          return;
+        }
+        if (recipients.some((peer) => !peer || peer.channel?.readyState !== "open")) {
+          showToast("Waiting for an encrypted WebRTC connection to every room participant. Your message was not sent.");
+          return;
+        }
+        const message = {
+          code: appState.identity.code,
+          name: updateProfileName(),
+          emoji: "?",
+          avatar: appState.identity.avatar,
+          text,
+          own: true,
+          timestamp: Date.now()
+        };
         try {
-          roomSocket.send(JSON.stringify({ type: "room-message", room: activeRoom, text }));
+          const payload = JSON.stringify({ type: "room-message", room: activeRoom, text, timestamp: message.timestamp });
+          for (const peer of recipients) peer.channel.send(payload);
+          const history = appState.roomMessages[activeRoom] || (appState.roomMessages[activeRoom] = []);
+          history.push(message);
+          if (history.length > 300) history.splice(0, history.length - 300);
+          saveState();
+          appendMessage(message);
           input.value = "";
         } catch (error) {
-          showToast("The message could not be sent to the shared room.");
+          showToast("The message could not be sent over the encrypted room connections.");
         }
         return;
       }
@@ -1585,7 +1830,6 @@
       if (!friend) return;
       activePeerId = null;
       activeView = "peer";
-      activeRoom = friend.name;
       document.querySelectorAll(".nav-button").forEach((item) => item.classList.remove("active"));
       document.getElementById("chatTitle").textContent = friend.name;
       setAvatar(document.getElementById("roomIcon"), friend.avatar, friend.name.trim().slice(0, 1).toUpperCase() || "?");
@@ -1796,7 +2040,16 @@
         if (!connectionBackdrop.hidden) closeConnectionDialog();
         if (!modalBackdrop.hidden) closeModal();
         if (!profileBackdrop.hidden) closeProfileDialog();
+        document.getElementById("aboutConnectionBackdrop").hidden = true;
       }
+    });
+    document.getElementById("aboutConnectionButton").addEventListener("click", () => {
+      document.getElementById("aboutConnectionBackdrop").hidden = false;
+      document.getElementById("closeAboutConnection").focus();
+    });
+    document.getElementById("closeAboutConnection").addEventListener("click", () => {
+      document.getElementById("aboutConnectionBackdrop").hidden = true;
+      document.getElementById("aboutConnectionButton").focus();
     });
 
     updateIdentityDisplay();

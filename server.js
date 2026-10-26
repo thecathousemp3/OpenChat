@@ -1,10 +1,12 @@
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
+const { randomUUID } = require("node:crypto");
 const { WebSocket, WebSocketServer } = require("ws");
 
 const host = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT || 3000);
+const maxRoomMembers = 9;
 const rooms = new Map([["Global Chat", new Set()]]);
 const roomNames = new Map([["global chat", "Global Chat"]]);
 const staticAssets = new Map([
@@ -49,7 +51,14 @@ function validAvatar(value) {
 
 function removeFromCurrentRoom(socket) {
   if (!socket.room) return;
-  rooms.get(socket.room)?.delete(socket);
+  const room = socket.room;
+  const members = rooms.get(room);
+  if (members) {
+    members.delete(socket);
+    for (const recipient of members) {
+      send(recipient, { type: "room-peer-left", room, peerId: socket.id });
+    }
+  }
   socket.room = null;
 }
 
@@ -104,7 +113,7 @@ const server = http.createServer((request, response) => {
 const webSockets = new WebSocketServer({
   server,
   path: "/ws",
-  maxPayload: 16 * 1024,
+  maxPayload: 64 * 1024,
   verifyClient: ({ origin, req }, done) => {
     if (!origin) return done(true);
     try {
@@ -116,6 +125,7 @@ const webSockets = new WebSocketServer({
 });
 
 webSockets.on("connection", (socket) => {
+  socket.id = randomUUID();
   socket.room = null;
   socket.identity = null;
   socket.windowStartedAt = Date.now();
@@ -193,11 +203,27 @@ webSockets.on("connection", (socket) => {
         reportError(socket, "Your nickname or friend code is invalid.");
         return;
       }
+      const members = rooms.get(room);
+      if (members.size >= maxRoomMembers && !members.has(socket)) {
+        reportError(socket, `This peer-to-peer room is full. The limit is ${maxRoomMembers} participants.`);
+        return;
+      }
+      const existingPeers = [...members]
+        .filter((member) => member !== socket && member.identity)
+        .map((member) => ({ id: member.id, ...member.identity }));
       removeFromCurrentRoom(socket);
       socket.room = room;
       socket.identity = { code, inviteCode, name, avatar: payload.avatar };
-      rooms.get(room).add(socket);
-      send(socket, { type: "joined", room });
+      members.add(socket);
+      send(socket, { type: "joined", room, peerId: socket.id, peers: existingPeers });
+      for (const recipient of members) {
+        if (recipient === socket) continue;
+        send(recipient, {
+          type: "room-peer-joined",
+          room,
+          peer: { id: socket.id, ...socket.identity }
+        });
+      }
       return;
     }
 
@@ -221,35 +247,48 @@ webSockets.on("connection", (socket) => {
         name: payload.name.trim().replace(/[\u0000-\u001f\u007f]/g, ""),
         avatar: payload.avatar
       };
-      for (const recipient of rooms.get(socket.room)) {
+      for (const recipient of rooms.get(socket.room) || []) {
         send(recipient, {
-          type: "profile",
+          type: "room-peer-profile",
           room: socket.room,
+          peerId: socket.id,
           ...socket.identity
         });
       }
       return;
     }
 
-    if (payload.type === "room-message") {
-      if (!socket.room || socket.room !== payload.room || !socket.identity) {
-        reportError(socket, "Join that shared room before sending a message.");
+    if (payload.type === "room-signal") {
+      const signal = payload.signal;
+      if (
+        !socket.room ||
+        !socket.identity ||
+        typeof payload.target !== "string" ||
+        !signal ||
+        typeof signal !== "object" ||
+        !["offer", "answer"].includes(signal.type) ||
+        typeof signal.sdp !== "string" ||
+        signal.sdp.length > 50000
+      ) {
+        reportError(socket, "Could not relay that WebRTC room connection request.");
         return;
       }
-      if (typeof payload.text !== "string" || !payload.text.trim() || payload.text.length > 500) {
-        reportError(socket, "Messages must contain 1–500 characters.");
+      const recipient = [...(rooms.get(socket.room) || [])].find((member) => member.id === payload.target);
+      if (!recipient || !recipient.identity) {
+        reportError(socket, "That room participant is no longer available.");
         return;
       }
-      const message = {
-        type: "room-message",
+      send(recipient, {
+        type: "room-signal",
         room: socket.room,
-        code: socket.identity.code,
-        name: socket.identity.name,
-        avatar: socket.identity.avatar,
-        text: payload.text.trim(),
-        timestamp: now
-      };
-      for (const recipient of rooms.get(socket.room)) send(recipient, message);
+        from: socket.id,
+        signal: { type: signal.type, sdp: signal.sdp }
+      });
+      return;
+    }
+
+    if (payload.type === "room-message") {
+      reportError(socket, "Room messages must be sent through a peer-to-peer WebRTC connection.");
       return;
     }
 

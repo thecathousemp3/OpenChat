@@ -9,6 +9,9 @@ test("inline app script parses and all static DOM references exist", () => {
   const match = html.match(/<script>([\s\S]*?)<\/script>/);
   assert.ok(match, "index.html should contain the app script");
   assert.doesNotThrow(() => new vm.Script(match[1]));
+  assert.match(html, /About WebRTC and privacy/);
+  assert.match(html, /DTLS/);
+  assert.match(html, /not cryptographically verified/);
 
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((entry) => entry[1]);
   const duplicates = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];

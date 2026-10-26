@@ -49,14 +49,14 @@ function openClient() {
     socket.once("open", () => {
       resolve({
         socket,
-        nextMessage() {
+        nextMessage(timeoutMs = 3000) {
           if (messages.length) return Promise.resolve(messages.shift());
           return new Promise((resolveMessage, rejectMessage) => {
             const timeout = setTimeout(() => {
               const index = waiters.indexOf(receive);
               if (index !== -1) waiters.splice(index, 1);
               rejectMessage(new Error("Timed out waiting for a WebSocket message."));
-            }, 3000);
+            }, timeoutMs);
             function receive(message) {
               clearTimeout(timeout);
               resolveMessage(message);
@@ -104,27 +104,26 @@ test("health endpoint and app assets are served", async () => {
   }
 });
 
-test("new server starts with Global Chat and relays messages in created rooms", async () => {
+test("new server starts with Global Chat and relays WebRTC signaling, not room messages", async () => {
   const first = await openClient();
   assert.deepEqual((await first.nextMessage()).rooms, ["Global Chat"]);
-
-  first.socket.send(JSON.stringify({ type: "create-room", room: "Test Lounge" }));
-  assert.deepEqual((await first.nextMessage()).rooms, ["Global Chat", "Test Lounge"]);
-  assert.deepEqual(await first.nextMessage(), { type: "room-created", room: "Test Lounge" });
-
   const second = await openClient();
-  assert.deepEqual((await second.nextMessage()).rooms, ["Global Chat", "Test Lounge"]);
+  assert.deepEqual((await second.nextMessage()).rooms, ["Global Chat"]);
 
   const firstIdentity = {
     type: "join",
-    room: "Test Lounge",
+    room: "Global Chat",
     code: "OC-ABCD-EFGH-JKLM",
     inviteCode: "OC-ABCD-EFGH-JKLM",
     name: "First user",
     avatar: null
   };
   first.socket.send(JSON.stringify(firstIdentity));
-  assert.deepEqual(await first.nextMessage(), { type: "joined", room: "Test Lounge" });
+  const firstJoined = await first.nextMessage();
+  assert.equal(firstJoined.type, "joined");
+  assert.equal(firstJoined.room, "Global Chat");
+  assert.ok(firstJoined.peerId);
+  assert.deepEqual(firstJoined.peers, []);
 
   second.socket.send(JSON.stringify({
     ...firstIdentity,
@@ -132,13 +131,50 @@ test("new server starts with Global Chat and relays messages in created rooms", 
     inviteCode: "OC-NPQR-STUV-WXYZ",
     name: "Second user"
   }));
-  assert.deepEqual(await second.nextMessage(), { type: "joined", room: "Test Lounge" });
+  const secondJoined = await second.nextMessage();
+  assert.equal(secondJoined.type, "joined");
+  assert.equal(secondJoined.room, "Global Chat");
+  assert.equal(secondJoined.peers.length, 1);
+  assert.equal(secondJoined.peers[0].id, firstJoined.peerId);
+  assert.equal(secondJoined.peers[0].name, "First user");
 
-  first.socket.send(JSON.stringify({ type: "room-message", room: "Test Lounge", text: "Hello from a test." }));
-  const firstMessage = await first.nextMessage();
-  const secondMessage = await second.nextMessage();
-  assert.equal(firstMessage.text, "Hello from a test.");
-  assert.equal(secondMessage.text, "Hello from a test.");
-  assert.equal(firstMessage.name, "First user");
-  assert.equal(firstMessage.room, "Test Lounge");
+  const joinedEvent = await first.nextMessage();
+  assert.equal(joinedEvent.type, "room-peer-joined");
+  assert.equal(joinedEvent.peer.id, secondJoined.peerId);
+
+  const offer = { type: "offer", sdp: "v=0\r\nroom-offer-test" };
+  first.socket.send(JSON.stringify({
+    type: "room-signal",
+    target: secondJoined.peerId,
+    signal: offer
+  }));
+  assert.deepEqual(await second.nextMessage(), {
+    type: "room-signal",
+    room: "Global Chat",
+    from: firstJoined.peerId,
+    signal: offer
+  });
+
+  first.socket.send(JSON.stringify({ type: "room-message", room: "Global Chat", text: "This must not reach the server." }));
+  const rejected = await first.nextMessage();
+  assert.equal(rejected.type, "error");
+  assert.match(rejected.message, /peer-to-peer WebRTC/);
+  await assert.rejects(second.nextMessage(100), /Timed out/);
+
+  first.socket.send(JSON.stringify({
+    type: "profile-update",
+    code: firstIdentity.code,
+    inviteCode: firstIdentity.inviteCode,
+    name: "First user updated",
+    avatar: null
+  }));
+  const profile = await second.nextMessage();
+  assert.equal(profile.type, "room-peer-profile");
+  assert.equal(profile.peerId, firstJoined.peerId);
+  assert.equal(profile.name, "First user updated");
+
+  first.socket.close();
+  const leftEvent = await second.nextMessage();
+  assert.equal(leftEvent.type, "room-peer-left");
+  assert.equal(leftEvent.peerId, firstJoined.peerId);
 });

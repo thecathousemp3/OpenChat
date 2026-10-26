@@ -1,6 +1,6 @@
 # OpenChat
 
-OpenChat is a self-hosted instant messenger with a familiar desktop chat interface. It brings together shared chat rooms, direct browser-to-browser messaging, editable profiles, and portable encrypted profile backups in a small Node.js application.
+OpenChat is a self-hosted instant messenger with a familiar desktop chat interface. Shared rooms and direct conversations use browser-to-browser WebRTC data channels. A small Node.js service lists rooms and coordinates peer connections; room message text is not sent through the server.
 
 [![CI](https://github.com/thecathousemp3/OpenChat/actions/workflows/ci.yml/badge.svg)](https://github.com/thecathousemp3/OpenChat/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
@@ -12,7 +12,7 @@ The preview uses fictional names and sample messages. It is a visual illustratio
 
 ## What it does
 
-- **Global Chat and custom rooms:** people using the same OpenChat server can join shared rooms and exchange live messages.
+- **Global Chat and custom rooms:** members connect to other room participants over WebRTC data channels.
 - **Direct messaging:** friends can establish a browser-to-browser WebRTC data channel using a manual offer and answer exchange.
 - **Friend requests:** share an invite code, connect directly, then accept or ignore the request.
 - **Editable profiles:** choose a display name and picture. Profile updates are shared with connected peers and room participants.
@@ -55,16 +55,20 @@ npm test
 
 ### Use shared chat
 
-Global Chat is the only room present when a server starts. Select **Create a room** to add a room for everyone connected to that server. Room names and membership are held in server memory. Custom rooms disappear when the server restarts; no test rooms are included by default. Messages are relayed live and are not queued for offline users.
+Global Chat is the only room present when a server starts. Select **Create a room** to add a room for everyone connected to that server. Room names and membership are held in server memory. Custom rooms disappear when the server restarts.
+
+Room messages are sent directly between members over WebRTC data channels. The server relays room membership, profile details, and the WebRTC offer and answer needed to connect; it does not receive room message text. The browser shows how many room peers currently have a data channel open. A message is not sent unless every currently listed room participant has an open peer connection. Messages are not queued for offline users.
+
+Rooms use a peer mesh, which creates a separate connection between each pair of participants. The server limits each room to nine participants to bound the connection count. This design is intended for small rooms, not large public broadcasts.
 
 ### Add a friend
 
 1. Share your `OC-XXXX-XXXX-XXXX` invite code with the person through a channel you trust.
 2. Select **Add a friend** in both browser sessions and follow the prompts to create an offer and answer.
-3. Exchange the offer and answer out of band. This manual step acts as signaling; OpenChat does not operate a signaling service.
+3. Exchange the offer and answer out of band. This manual step acts as signaling for the direct connection; OpenChat does not operate a direct-message signaling service.
 4. Compare the displayed invite codes using a trusted channel. The recipient can then accept or ignore the friend request.
 
-An established direct conversation uses a WebRTC data channel. No STUN or TURN servers are configured, so some networks and firewalls will prevent a connection. Existing friends and local history remain associated with the stable local profile ID if you generate a new invite code.
+Direct messages use a WebRTC data channel. Room connections are negotiated automatically through the OpenChat server. Both types of peer connection use DTLS encryption in transit. No STUN or TURN servers are configured, so some networks and firewalls will prevent either kind of peer connection. Existing friends and local history remain associated with the stable local profile ID if you generate a new invite code.
 
 ### Back up a profile
 
@@ -75,27 +79,28 @@ OpenChat does not keep or recover the backup password. Store the file and passwo
 ## How it is built
 
 - `index.html` contains the responsive interface, browser-side profile storage, profile backup encryption, and WebRTC connection flow.
-- `server.js` serves the page and handles WebSocket room membership, room discovery, profile announcements, and live room-message relay.
+- `server.js` serves the page and handles WebSocket room discovery, peer presence, profile metadata, and WebRTC offer/answer signaling. It does not relay shared-room message bodies.
 - `ws` provides the WebSocket server. The browser uses built-in Web APIs for local storage, Web Crypto, and WebRTC.
-- Room state exists only in server memory. Profile and conversation state is stored separately in each browser profile.
+- Room names and membership exist only in server memory. Profile and conversation state is stored separately in each browser profile.
 
 ## Security and privacy
 
 OpenChat is an early-stage project, not a reviewed secure-messaging product. Do not use it for sensitive communications.
 
-- **Shared rooms are not end-to-end encrypted.** Room messages pass through the OpenChat server, which can read them.
-- **Direct WebRTC transport is encrypted in transit by DTLS,** but OpenChat does not implement a reviewed end-to-end identity protocol. Comparing invite codes helps users notice mismatches; it is not a substitute for an audited protocol.
+- **Direct and room messages travel over WebRTC data channels, which browsers protect in transit with DTLS.** Shared-room message bodies are not sent through the OpenChat server. The server does receive room membership, display names, avatars, invite codes, and WebRTC signaling data.
+- **WebRTC does not by itself authenticate who a participant is.** OpenChat does not implement a reviewed end-to-end identity protocol or signed room membership. A malicious or compromised signaling server could interfere with connection setup. Comparing friend invite codes out of band is useful for direct contacts, but is not an audited protocol or room-wide identity guarantee.
 - **Local browser storage is not encrypted.** Anyone with access to the browser profile may be able to read cached profile and conversation data.
 - **Encrypted export protects only the backup file.** Security depends on a strong password and keeping the password private.
 - **Identity details are not authenticated.** Display names, avatars, and invite codes can be spoofed. There is no account recovery, centralized identity provider, or authoritative directory.
-- **Direct connections require manual signaling.** There is no built-in relay service, offline delivery, or configured STUN/TURN infrastructure.
+- **Direct connections require manual signaling.** Shared-room connections are signaled by the room server. There is no offline delivery or configured STUN/TURN infrastructure, so restrictive NATs and firewalls can prevent connections.
+- **Room mesh capacity is deliberately limited.** Each member needs a separate WebRTC connection to every other member, and each room is capped at nine participants.
 - **Public deployments need additional safeguards.** Use HTTPS and WSS, restrict network access as appropriate, and add moderation, abuse handling, resource limits, logging policy, and operational monitoring before inviting the public.
 
 See [SECURITY.md](SECURITY.md) for responsible disclosure guidance. Reported limitations are not a promise that the application is secure.
 
 ## Hosting for other people
 
-For access beyond your own machine, run OpenChat behind a reverse proxy that terminates HTTPS and forwards WebSocket upgrades to the Node.js service. Configure the proxy to preserve the `Host` header. The server checks same-origin WebSocket connections, but that check is not authentication or authorization.
+For access beyond your own machine, run OpenChat behind a reverse proxy that terminates HTTPS and forwards WebSocket upgrades to the Node.js service. Configure the proxy to preserve the `Host` header. The server checks same-origin WebSocket connections, but that check is not authentication or authorization. WebRTC room data channels are negotiated through this WebSocket signaling path; the room message bodies travel over the peer connections rather than through the proxy.
 
 The included server is intentionally small. It has no user accounts, room permissions, persistence, moderation tools, or administrator console. Anyone who can reach a server can create a room and join rooms on it. Review the source and decide whether its current behavior is suitable for your environment before exposing it to the internet.
 
