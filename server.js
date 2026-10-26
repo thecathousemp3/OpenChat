@@ -6,7 +6,6 @@ const { WebSocket, WebSocketServer } = require("ws");
 
 const host = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT || 3000);
-const maxRoomMembers = 9;
 const rooms = new Map([["Global Chat", new Set()]]);
 const roomNames = new Map([["global chat", "Global Chat"]]);
 const staticAssets = new Map([
@@ -204,10 +203,6 @@ webSockets.on("connection", (socket) => {
         return;
       }
       const members = rooms.get(room);
-      if (members.size >= maxRoomMembers && !members.has(socket)) {
-        reportError(socket, `This peer-to-peer room is full. The limit is ${maxRoomMembers} participants.`);
-        return;
-      }
       const existingPeers = [...members]
         .filter((member) => member !== socket && member.identity)
         .map((member) => ({ id: member.id, ...member.identity }));

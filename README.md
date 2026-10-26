@@ -16,9 +16,9 @@ OpenChat gives you a familiar buddy-list-and-chat-window experience without a ho
 
 ## Explore OpenChat
 
-| How room messages travel | Why rooms stay small | What a profile backup protects |
+| How room messages travel | How peer meshes scale | What a profile backup protects |
 | --- | --- | --- |
-| ![A diagram showing WebRTC room messages going directly between peers while the server handles signaling](assets/message-path.svg) | ![A diagram showing a small peer mesh and the connection count in a nine-person room](assets/room-mesh.svg) | ![A diagram comparing unencrypted browser storage with an encrypted profile export](assets/profile-backup.svg) |
+| ![A diagram showing WebRTC room messages going directly between peers while the server handles signaling](assets/message-path.svg) | ![A diagram showing how the number of peer connections grows with room size](assets/room-mesh.svg) | ![A diagram comparing unencrypted browser storage with an encrypted profile export](assets/profile-backup.svg) |
 
 ## At a glance
 
@@ -72,7 +72,7 @@ Every new server starts with one room: **Global Chat**. The room list and member
 
 Room chat is a direct mesh: each browser creates a separate WebRTC data channel to every other currently connected member. The room server tells members who is present and helps browsers exchange connection offers and answers. It does not receive room message text. The app waits until a channel to every listed participant is open before sending a room message; messages are not queued for offline members.
 
-The server caps a room at **nine participants**. This is intentionally a small-group design, not a broadcast service. The [room mesh diagram](assets/room-mesh.svg) explains why the number of connections grows faster than the number of participants.
+Rooms have **no fixed participant cap**. Each browser connects directly to every other room member, so the full mesh grows quadratically: a room with *n* people needs *n × (n − 1) ÷ 2* peer connections overall. OpenChat will accept larger rooms, but browsers and networks have practical capacity limits; very large rooms may become slow or fail to connect. The [room mesh diagram](assets/room-mesh.svg) shows how the connection count grows.
 
 ### Add a friend and start a direct chat
 
@@ -135,7 +135,7 @@ The password-protected export is encrypted, but encryption applies to the export
 
 ### Why a peer mesh is for small groups
 
-In a full mesh, every participant needs one connection to every other participant. With *n* members, that is *n × (n − 1) ÷ 2* peer connections across the room. Nine participants mean 36 peer-to-peer connections in total, and each participant maintains up to eight. This avoids routing message bodies through a central room server, but it uses more network and browser resources as a room grows.
+In a full mesh, every participant needs one connection to every other participant. With *n* members, that is *n × (n − 1) ÷ 2* peer connections across the room, and each participant maintains *n − 1* connections. This avoids routing message bodies through a central room server, but it uses more network and browser resources as a room grows. OpenChat imposes no fixed participant cap; actual capacity depends on each participant's browser, device, and network.
 
 ### What “self-hosted” and “peer-to-peer” mean here
 

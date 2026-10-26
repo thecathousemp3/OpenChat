@@ -1,30 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="540" viewBox="0 0 1200 540" role="img" aria-labelledby="title description">
-  <title id="title">Why OpenChat rooms are limited to small groups</title>
-  <desc id="description">Four sample participants have six direct pairwise WebRTC connections. A nine-person room has 36 peer connections total and up to eight connections per participant.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title description">
+  <title id="title">How OpenChat room peer connections scale</title>
+  <desc id="description">In a peer mesh every participant connects to every other participant. Four members require six pairwise connections; ten require 45. OpenChat sets no fixed room participant cap, but browser and network capacity is finite.</desc>
   <defs>
     <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#202020"/><stop offset="1" stop-color="#101010"/></linearGradient>
-    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto-start-reverse"><path d="M0 0l9 4.5-9 4.5z" fill="#aaa"/></marker>
+    <linearGradient id="card" x2="0" y2="1"><stop stop-color="#303030"/><stop offset="1" stop-color="#1d1d1d"/></linearGradient>
   </defs>
-  <rect width="1200" height="540" rx="18" fill="url(#bg)"/>
-  <text x="54" y="64" fill="#fff" font-family="Arial,sans-serif" font-size="27" font-weight="700">A peer mesh trades scale for direct delivery</text>
-  <text x="54" y="94" fill="#bbb" font-family="Arial,sans-serif" font-size="15">Each participant connects to every other participant in the room.</text>
-  <g stroke="#aaa" stroke-width="2.5" fill="none">
-    <path d="M170 245L350 155M170 245L350 335M350 155L530 245M350 335L530 245M170 245L350 335M350 155L350 335"/>
+  <rect width="1200" height="560" rx="18" fill="url(#bg)"/>
+  <text x="600" y="62" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="27" font-weight="700">No fixed room cap; peer connections grow quickly</text>
+  <text x="600" y="94" fill="#bbb" text-anchor="middle" font-family="Arial,sans-serif" font-size="15">Every browser connects directly to every other participant in the room.</text>
+
+  <g stroke="#999" stroke-width="2.5" fill="none">
+    <path d="M155 235L310 150M155 235L310 320M310 150L465 235M310 320L465 235M155 235L310 320M310 150L310 320"/>
   </g>
-  <g fill="#282828" stroke="#eee" stroke-width="2">
-    <circle cx="170" cy="245" r="34"/><circle cx="350" cy="155" r="34"/><circle cx="350" cy="335" r="34"/><circle cx="530" cy="245" r="34"/>
+  <g fill="#292929" stroke="#eee" stroke-width="2">
+    <circle cx="155" cy="235" r="32"/><circle cx="310" cy="150" r="32"/><circle cx="310" cy="320" r="32"/><circle cx="465" cy="235" r="32"/>
   </g>
   <g fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" font-weight="700">
-    <text x="170" y="250">A</text><text x="350" y="160">B</text><text x="350" y="340">C</text><text x="530" y="250">D</text>
+    <text x="155" y="240">A</text><text x="310" y="155">B</text><text x="310" y="325">C</text><text x="465" y="240">D</text>
   </g>
-  <text x="350" y="410" fill="#ccc" text-anchor="middle" font-family="Arial,sans-serif" font-size="14">4 people = 6 peer connections</text>
-  <path d="M620 145v280" stroke="#444" stroke-width="2"/>
-  <text x="680" y="171" fill="#fff" font-family="Arial,sans-serif" font-size="18" font-weight="700">Connection count grows quickly</text>
-  <text x="680" y="219" fill="#ccc" font-family="Arial,sans-serif" font-size="16">Room connections = n x (n - 1) / 2</text>
-  <rect x="680" y="246" width="455" height="89" rx="12" fill="#292929" stroke="#666"/>
-  <text x="710" y="283" fill="#fff" font-family="Arial,sans-serif" font-size="23" font-weight="700">9 people = 36 connections</text>
-  <text x="710" y="312" fill="#bbb" font-family="Arial,sans-serif" font-size="15">Up to 8 separate connections per browser</text>
-  <text x="680" y="374" fill="#ccc" font-family="Arial,sans-serif" font-size="15">Good fit: small, live conversations.</text>
-  <text x="680" y="401" fill="#aaa" font-family="Arial,sans-serif" font-size="15">Not designed for large public broadcasts.</text>
-  <text x="600" y="493" fill="#999" text-anchor="middle" font-family="Arial,sans-serif" font-size="13">The server caps each room at nine members to keep the all-to-all mesh bounded.</text>
+  <text x="310" y="390" fill="#ccc" text-anchor="middle" font-family="Arial,sans-serif" font-size="15">4 members = 6 connections</text>
+
+  <path d="M600 140v285" stroke="#444" stroke-width="2"/>
+  <text x="900" y="163" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="19" font-weight="700">Connections across the room</text>
+  <text x="900" y="200" fill="#ccc" text-anchor="middle" font-family="Arial,sans-serif" font-size="16">n x (n - 1) / 2</text>
+  <rect x="674" y="224" width="452" height="82" rx="12" fill="url(#card)" stroke="#666"/>
+  <text x="900" y="258" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="21" font-weight="700">10 members = 45 connections</text>
+  <text x="900" y="285" fill="#bbb" text-anchor="middle" font-family="Arial,sans-serif" font-size="14">Each browser maintains 9 peer connections</text>
+  <text x="900" y="345" fill="#ccc" text-anchor="middle" font-family="Arial,sans-serif" font-size="14">OpenChat enforces no fixed participant limit.</text>
+  <text x="900" y="371" fill="#aaa" text-anchor="middle" font-family="Arial,sans-serif" font-size="14">Large rooms may exceed device or network capacity.</text>
+
+  <text x="600" y="466" fill="#ccc" text-anchor="middle" font-family="Arial,sans-serif" font-size="15">More participants mean more connections on every device.</text>
+  <text x="600" y="496" fill="#999" text-anchor="middle" font-family="Arial,sans-serif" font-size="13">No hard cap does not mean unlimited practical capacity.</text>
 </svg>

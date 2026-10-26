@@ -504,7 +504,7 @@
       <h2 id="aboutConnectionTitle">About WebRTC and privacy</h2>
       <p>Shared-room messages travel directly between browsers over WebRTC data channels. Browsers use DTLS to encrypt data in transit, and room message text is not relayed through the OpenChat server.</p>
       <p>The server still handles room membership and relays peer connection offers and answers. It also receives display names, profile pictures, and invite codes. Peer identity is not cryptographically verified; a malicious or compromised signaling server could interfere with connection setup. OpenChat has not had an independent security review.</p>
-      <p>Rooms connect each participant directly to every other participant and are limited to nine people. No STUN or TURN servers are configured, so some network setups cannot connect. WebRTC can disclose network addresses to other participants and signaling infrastructure.</p>
+      <p>Rooms connect each participant directly to every other participant, with no fixed participant cap. The number of peer connections grows quickly as rooms grow, and large rooms may overwhelm devices or networks. No STUN or TURN servers are configured, so some network setups cannot connect. WebRTC can disclose network addresses to other participants and signaling infrastructure.</p>
       <p>Direct messages also use WebRTC. The offer and answer must be copied between contacts manually, and friend codes should be compared using a separate trusted channel.</p>
       <p>Messages cached by this browser are stored in local storage without encryption. For sensitive conversations, use an independently reviewed messaging application.</p>
       <div class="modal-actions"><button id="closeAboutConnection" type="button">Close</button></div>

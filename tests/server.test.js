@@ -178,3 +178,32 @@ test("new server starts with Global Chat and relays WebRTC signaling, not room m
   assert.equal(leftEvent.type, "room-peer-left");
   assert.equal(leftEvent.peerId, firstJoined.peerId);
 });
+
+test("Global Chat accepts more than nine participants", async () => {
+  const participants = [];
+  const codeGroups = ["AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF", "GGGG", "HHHH", "JJJJ"];
+  const inviteGroups = ["KKKK", "LLLL", "MMMM", "NNNN", "PPPP", "QQQQ", "RRRR", "SSSS", "TTTT"];
+  const suffixGroups = ["UUUU", "VVVV", "WWWW", "XXXX", "YYYY", "ZZZZ", "2222", "3333", "4444"];
+
+  try {
+    for (let index = 0; index < codeGroups.length; index += 1) {
+      const participant = await openClient();
+      participants.push(participant);
+      assert.deepEqual((await participant.nextMessage()).rooms, ["Global Chat"]);
+      participant.socket.send(JSON.stringify({
+        type: "join",
+        room: "Global Chat",
+        code: `OC-${codeGroups[index]}-${inviteGroups[index]}-${suffixGroups[index]}`,
+        inviteCode: `OC-${codeGroups[index]}-${inviteGroups[index]}-${suffixGroups[index]}`,
+        name: `Room member ${index + 1}`,
+        avatar: null
+      }));
+
+      const joined = await participant.nextMessage();
+      assert.equal(joined.type, "joined");
+      if (index === codeGroups.length - 1) assert.equal(joined.peers.length, 9);
+    }
+  } finally {
+    for (const participant of participants) participant.socket.close();
+  }
+});
