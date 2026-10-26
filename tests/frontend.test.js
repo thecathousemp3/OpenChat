@@ -15,6 +15,11 @@ test("inline app script parses and all static DOM references exist", () => {
   assert.equal([...match[1].matchAll(/new RTCPeerConnection\(\{ iceServers \}\)/g)].length, 2);
   assert.match(match[1], /createOffer\(\{ iceRestart: true \}\)/);
   assert.match(match[1], /fetch\("\/config\.json"/);
+  assert.match(match[1], /type: "message-ack"/);
+  assert.match(match[1], /function retryMessage/);
+  assert.match(match[1], /function renderMessageHistory/);
+  assert.match(html, /id="messageSearch"/);
+  assert.match(html, /id="replyPreview"/);
   assert.match(html, /\.window-dots\s*\{\s*display:\s*flex;\s*flex:\s*0 0 auto;/);
   assert.match(html, /@media \(max-width:\s*360px\)[\s\S]*?\.titlebar-brand > span:last-child\s*\{\s*display:\s*none;/);
 

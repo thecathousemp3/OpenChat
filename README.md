@@ -25,6 +25,8 @@ OpenChat gives you a familiar buddy-list-and-chat-window experience without a ho
 - **Global Chat and rooms:** room members connect to one another with WebRTC data channels. Global Chat is the only room present when a server starts; users can create other rooms.
 - **Direct messages:** friends exchange a connection offer and answer out of band, then chat over a browser-to-browser data channel.
 - **Friend requests:** connect with a friend code, check the code through a trusted channel, then accept or ignore the request.
+- **Delivery feedback:** messages show per-peer delivery acknowledgements; undelivered messages can be retried without re-sending to peers that acknowledged them.
+- **Local conversation tools:** search the messages cached on this device and reply to a message with a quoted excerpt.
 - **Personal profiles:** choose a display name and picture. Profile information is sent to connected friends and room members.
 - **Portable encrypted backup:** export your local profile, friends, requests, and cached messages to a password-protected `.openchat` file.
 - **Self-hosted:** one small Node.js process serves the page and coordinates room membership and WebRTC signaling.
@@ -35,7 +37,11 @@ OpenChat gives you a familiar buddy-list-and-chat-window experience without a ho
 
 - Node.js 22 or later
 - npm
-- A modern browser with WebRTC and Web Crypto support
+- A supported browser with WebRTC, Web Crypto, and local storage support
+
+### Browser support
+
+OpenChat targets current stable desktop Chrome, Edge, Firefox, and Safari. Chromium is exercised in the automated browser integration test; the other browsers are best-effort targets and should be tested before relying on a deployment. Mobile browsers may work but are not currently covered by automated tests. Use an up-to-date browser; WebRTC and Web Crypto behavior, and available network paths, vary by browser and environment.
 
 ### Run locally
 
@@ -87,9 +93,11 @@ Run the test suite with `npm test`.
 
 Every new server starts with one room: **Global Chat**. The room list and membership live in server memory. Creating a room makes it available to people connected to that same server; it does not publish the room to a global directory. Custom rooms disappear when the server restarts.
 
-Room chat is a direct mesh: each browser creates a separate WebRTC data channel to every other currently connected member. The room server tells members who is present and helps browsers exchange connection offers and answers. It does not receive room message text. The app waits until a channel to every listed participant is open before sending a room message; messages are not queued for offline members.
+Room chat is a direct mesh: each browser creates a separate WebRTC data channel to every other currently connected member. The room server tells members who is present and helps browsers exchange connection offers and answers. It does not receive room message text. A message is sent to currently open peer channels; OpenChat shows which peers acknowledged it and lets you retry unacknowledged recipients. Messages are not queued for offline members, and older clients that do not acknowledge messages may leave the delivery status waiting.
 
 Rooms have **no fixed participant cap**. Each browser connects directly to every other room member, so the full mesh grows quadratically: a room with *n* people needs *n × (n − 1) ÷ 2* peer connections overall. OpenChat will accept larger rooms, but browsers and networks have practical capacity limits; very large rooms may become slow or fail to connect. The [room mesh diagram](assets/room-mesh.svg) shows how the connection count grows.
+
+Search applies only to the conversation history cached in the current browser profile. Replies store a quoted excerpt locally and send that excerpt with the reply; there is no server-side search, synchronized history, or offline delivery. The server has no accounts, room permissions, or moderation tools, so any reachable visitor can join a room. Since participant identities are not authenticated, OpenChat does not currently assign trusted room moderators.
 
 ### Add a friend and start a direct chat
 
@@ -135,6 +143,12 @@ WebRTC needs a path through the networks between the browsers. OpenChat ships wi
 
 The app reports connection status and retries ICE negotiation for shared-room peer connections after a connection failure. Direct-message signaling is manual, so a failed direct connection requires exchanging a new offer and answer. The app does not silently fall back to sending room message text through the server. WebRTC may also expose network address information to peers or infrastructure involved in connection setup; consider this when deciding whether to use it.
 
+### Voice/video and end-to-end security
+
+Voice and video calling are not implemented yet. WebRTC media uses DTLS-SRTP transport encryption, but OpenChat does not cryptographically authenticate peer identities or protect signaling with an identity-key protocol. Therefore, transport encryption alone is not a verified end-to-end encryption guarantee against a malicious signaling service. Voice/video and stronger authenticated end-to-end security need a separate threat model, protocol and key-verification design, and independent security review before implementation or security claims.
+
+See the [voice/video security design](CALLS_SECURITY_DESIGN.md) for the threat model and implementation gates. It defines no protocol yet; a mature, reviewed approach and independent security review are prerequisites.
+
 ## Local data and backup boundaries
 
 OpenChat stores the active profile and recent conversation history in the browser's local storage. That data is **not encrypted at rest**. Someone with access to your unlocked browser profile or device may be able to read it.
@@ -145,10 +159,11 @@ The password-protected export is encrypted, but encryption applies to the export
 
 ## Architecture
 
-- **`index.html`** contains the interface, local profile and conversation storage, profile export encryption, direct WebRTC setup, and room peer connections.
+- **`index.html`** contains the interface, local profile and conversation storage, profile export encryption, local conversation search/replies, delivery acknowledgements, direct WebRTC setup, and room peer connections.
 - **`server.js`** serves the page and ICE server configuration, and handles room discovery, membership, profile metadata, and room WebRTC offer/answer signaling. It does not relay shared-room message bodies.
 - **`ws`** provides the WebSocket server. The browser uses built-in Web APIs for WebRTC, Web Crypto, and local storage.
 - **No user database:** room names and membership are kept in server memory; profile and conversation state are kept separately in each browser profile.
+- **Browser integration tests:** the Node test suite launches Chromium and verifies a two-browser shared-room delivery, reply, local-search, and persistence flow.
 
 ### Why a peer mesh is for small groups
 
@@ -184,10 +199,13 @@ The server checks that a WebSocket `Origin` matches its `Host`, but this is **no
 There is no build step. The CI workflow checks JavaScript syntax, runs the server integration tests, and audits production dependencies.
 
 ```sh
+npx playwright install chromium
 npm test
 node --check server.js
 npm audit --omit=dev
 ```
+
+The test command runs Node integration tests and a Chromium test with two browser contexts. CI installs Chromium automatically.
 
 Contributions are welcome. Open an issue to discuss a substantial change before starting work, and include reproduction steps and relevant environment details in bug reports. Do not post real invite codes, profile backups, passwords, or message contents.
 
