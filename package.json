@@ -1,0 +1,16 @@
+{
+  "name": "openchat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A self-hosted desktop-style messenger with WebRTC direct messages and shared rooms",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}

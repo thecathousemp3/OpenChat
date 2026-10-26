@@ -1,0 +1,1766 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111111">
+  <meta name="description" content="A self-hosted instant messenger with shared chat rooms, WebRTC direct messaging, and encrypted profile backups.">
+  <meta name="color-scheme" content="dark">
+  <meta property="og:title" content="OpenChat | Self-hosted instant messenger">
+  <meta property="og:description" content="A desktop-inspired chat app with shared rooms, direct WebRTC messaging, and portable encrypted profile backups.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://raw.githubusercontent.com/thecathousemp3/OpenChat/main/assets/openchat-preview.svg">
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <title>OpenChat | Self-hosted instant messenger</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f5f5f5;
+      --muted: #b0b0b0;
+      --line: #383838;
+      --green: #d5d5d5;
+      --paper: #151515;
+      --sidebar: #101010;
+      --surface: #222;
+      --surface-hover: #303030;
+      --text-secondary: #dedede;
+      font-family: Tahoma, "Trebuchet MS", "Segoe UI", sans-serif;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background: #080808;
+      background-image: radial-gradient(#252525 0.8px, transparent 0.8px);
+      background-size: 18px 18px;
+    }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    .app-shell {
+      width: min(1200px, calc(100% - 56px));
+      height: min(790px, calc(100vh - 64px));
+      min-height: 590px;
+      margin: 32px auto;
+      display: grid;
+      grid-template-rows: 45px 1fr 34px;
+      overflow: hidden;
+      background: var(--paper);
+      border: 1px solid #444;
+      border-radius: 6px;
+      box-shadow: 0 22px 70px #0009, 0 0 0 1px #ffffff12, inset 0 1px #ffffff12;
+    }
+
+    .titlebar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      color: #fff;
+      background: linear-gradient(180deg, #585858 0%, #393939 18%, #252525 55%, #181818 100%);
+      border-bottom: 1px solid #080808;
+      box-shadow: inset 0 1px #ffffff75, inset 0 -1px #aaa5;
+      text-shadow: 0 1px 1px #0009;
+      font-size: 11px;
+      letter-spacing: .04em;
+    }
+    .titlebar-brand { display: flex; align-items: center; gap: 7px; font-weight: 700; }
+    .titlebar-mark { display: grid; width: 16px; height: 16px; place-items: center; border: 1px solid #ddd; border-radius: 4px; color: #fff; font-size: 10px; font-weight: 700; }
+    .window-dots { display: flex; gap: 3px; }
+    .window-dots span { width: 15px; height: 13px; border: 1px solid #ccc; border-radius: 2px; color: #fff; background: linear-gradient(180deg, #777, #444); box-shadow: inset 0 1px #ffffff70; text-align: center; line-height: 10px; font-size: 10px; }
+    .window-dots span:nth-child(1)::before { content: "−"; }
+    .window-dots span:nth-child(2)::before { content: "□"; font-size: 8px; }
+    .window-dots span:nth-child(3)::before { content: "×"; }
+    .workspace { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 0; }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 21px 14px 12px;
+      background: var(--sidebar);
+      border-right: 1px solid var(--line);
+    }
+    .profile { display: flex; align-items: center; gap: 11px; padding: 0 5px 18px; }
+    .avatar {
+      display: grid;
+      flex: 0 0 auto;
+      width: 39px;
+      height: 39px;
+      place-items: center;
+      overflow: hidden;
+      padding: 0;
+      border: 0;
+      border-radius: 12px;
+      color: #fff;
+      background: linear-gradient(145deg, #777, #333);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .avatar img, .contact-avatar img, .message-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-copy .profile-name { display: block; padding: 0; border: 0; color: var(--ink); background: transparent; font-size: 13px; font-weight: 700; text-align: left; cursor: pointer; }
+    .profile-copy .status-control { white-space: nowrap; }
+    .profile-copy { min-width: 0; }
+    .status-control {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 4px;
+      padding: 0;
+      border: 0;
+      color: var(--muted);
+      background: none;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .online-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+    .status-control.away .online-dot { background: #888; }
+    .section-label {
+      margin: 17px 8px 8px;
+      color: #aaa;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    .nav-list, .contact-list { display: grid; gap: 3px; }
+    .nav-button, .contact-button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border: 0;
+      border-radius: 4px;
+      text-align: left;
+      background: transparent;
+      cursor: pointer;
+    }
+    .nav-button { color: #ddd; font-size: 12px; }
+    .nav-button:hover, .contact-button:hover { background: var(--surface-hover); }
+    .nav-button.active { color: #fff; background: linear-gradient(180deg, #404040, #292929); box-shadow: inset 0 1px #ffffff22, inset 0 -1px #111; font-weight: 700; }
+    .nav-icon { width: 19px; text-align: center; font-size: 15px; }
+    .nav-count { margin-left: auto; color: var(--muted); font-size: 10px; }
+    .contact-list { overflow-y: auto; }
+    .contact-button { gap: 9px; font-size: 11px; }
+    .contact-avatar {
+      display: grid;
+      width: 29px;
+      height: 29px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 9px;
+      background: #303030;
+      font-size: 14px;
+    }
+    .contact-meta { min-width: 0; flex: 1; }
+    .contact-meta strong { display: block; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .contact-meta small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .contact-presence { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+    .contact-presence.away { background: #888; }
+    .request-list { display: grid; gap: 5px; }
+    .request-card { padding: 8px; border: 1px solid #383838; border-radius: 4px; background: #1b1b1b; }
+    .request-card strong { display: block; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .request-card small { display: block; margin: 4px 0 7px; color: var(--muted); font-size: 9px; }
+    .request-card-actions { display: flex; gap: 5px; }
+    .request-card-actions button { flex: 1; padding: 5px; border: 1px solid #444; border-radius: 3px; color: #eee; background: #292929; font-size: 9px; cursor: pointer; }
+    .request-card-actions button:hover { background: #444; }
+    .sidebar-actions { display: grid; gap: 7px; margin-top: auto; padding-top: 14px; }
+    .profile-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .profile-actions .sidebar-action { padding-right: 4px; padding-left: 4px; }
+    .sidebar-action {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: linear-gradient(180deg, #303030, #202020);
+      color: #eee;
+      box-shadow: inset 0 1px #ffffff14, inset 0 -1px #0d0c15;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .sidebar-icon { min-width: 12px; color: #ccc; font-size: 13px; text-align: center; }
+    .sidebar-action:hover { border-color: #999; color: #fff; background: linear-gradient(180deg, #454545, #303030); }
+
+    .chat-panel { display: grid; grid-template-rows: 69px 1fr auto; min-width: 0; min-height: 0; }
+    .chat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--line);
+    }
+    .chat-heading { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .room-icon {
+      display: grid;
+      width: 37px;
+      height: 37px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 8px;
+      color: #fff;
+      background: linear-gradient(145deg, #414141, #252525);
+      box-shadow: inset 0 1px #ffffff22, inset 0 -1px #11101b;
+      font-size: 17px;
+    }
+    .chat-heading h1 { margin: 0; font-size: 14px; }
+    .chat-heading p { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+    .conversation { overflow-y: auto; padding: 22px 27px 16px; }
+    .message { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 17px; }
+    .message-avatar {
+      display: grid;
+      width: 31px;
+      height: 31px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 10px;
+      background: #303030;
+      font-size: 14px;
+    }
+    .message-body { min-width: 0; }
+    .message-topline { display: flex; align-items: baseline; gap: 7px; margin: 1px 0 5px; }
+    .message-topline strong { font-size: 11px; }
+    .message-topline time { color: #aaa; font-size: 9px; }
+    .message-text { margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+    .message-text .mention { color: #fff; text-decoration: underline; font-weight: 700; }
+    .message.own { justify-content: flex-end; }
+    .message.own .message-avatar { order: 2; background: #383838; }
+    .message.own .message-body { text-align: right; }
+    .message.own .message-topline { justify-content: flex-end; }
+    .composer-wrap { padding: 13px 20px 15px; border-top: 1px solid var(--line); }
+    .composer {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 45px;
+      padding: 5px 7px 5px 14px;
+      border: 1px solid #444;
+      border-radius: 5px;
+      background: #191919;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .composer:focus-within { border-color: #bbb; box-shadow: 0 0 0 3px #ffffff22; }
+    .composer input { width: 100%; min-width: 0; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: 11px; }
+    .composer input::placeholder { color: #aaa; }
+    .send-button {
+      width: 32px;
+      height: 32px;
+      flex: 0 0 auto;
+      border: 0;
+      border-radius: 4px;
+      color: #fff;
+      background: linear-gradient(180deg, #888, #555 52%, #3c3c3c);
+      box-shadow: inset 0 1px #ffffff9c, inset 0 -1px #171717;
+      cursor: pointer;
+    }
+    .send-button:hover { background: linear-gradient(180deg, #aaa, #666 52%, #4a4a4a); }
+    .statusbar { display: flex; align-items: center; justify-content: space-between; padding: 0 14px; border-top: 1px solid #444; color: #bbb; background: linear-gradient(180deg, #222, #151515); box-shadow: inset 0 1px #ffffff0d; font-size: 9px; }
+    .statusbar-left { display: flex; align-items: center; gap: 7px; }
+    .statusbar-dot { width: 7px; height: 7px; border: 1px solid #777; border-radius: 50%; background: #444; }
+    .statusbar-dot.online { border-color: #fff; background: #ddd; box-shadow: 0 0 6px #ffffff80; }
+
+    .modal-backdrop { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 20px; background: #000a; }
+    .modal-backdrop[hidden] { display: none; }
+    .modal { width: min(390px, 100%); padding: 23px; border: 1px solid #444; border-radius: 6px; background: var(--paper); box-shadow: 0 24px 70px #000b; }
+    .modal h2 { margin: 0; font-size: 17px; }
+    .modal p { margin: 7px 0 18px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .modal label { display: block; margin: 0 0 6px; color: #eee; font-size: 10px; font-weight: 700; }
+    .modal input { width: 100%; margin-bottom: 14px; padding: 10px; border: 1px solid var(--line); border-radius: 5px; outline: 0; color: var(--ink); background: #101010; font-size: 12px; }
+    .modal input:focus { border-color: #bbb; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 3px; }
+    .modal-actions button { padding: 9px 13px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); font-size: 11px; cursor: pointer; }
+    .modal-actions .primary { border-color: #888; color: #fff; background: linear-gradient(180deg, #555, #333); }
+    .connection-choices { display: flex; flex-wrap: wrap; gap: 9px; }
+    .connection-choices button { padding: 10px 13px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); font-size: 11px; cursor: pointer; }
+    .connection-choices button.primary { border-color: #888; color: #fff; background: linear-gradient(180deg, #555, #333); }
+    .connection-modal > label, .connection-modal #displayNameLabel { display: block; margin: 0 0 6px; color: #eee; font-size: 10px; font-weight: 700; }
+    .connection-modal > input { width: 100%; margin-bottom: 14px; padding: 10px; border: 1px solid var(--line); border-radius: 5px; outline: 0; color: var(--ink); background: #101010; font-size: 12px; }
+    .connection-modal > input:focus, .connection-modal textarea:focus { border-color: #bbb; }
+    .connection-modal textarea { display: block; width: 100%; min-height: 136px; resize: vertical; padding: 10px; border: 1px solid var(--line); border-radius: 5px; outline: 0; color: var(--ink); background: #101010; font-family: Consolas, monospace; font-size: 10px; line-height: 1.5; }
+    .signal-help { margin: 8px 0 12px !important; }
+    .toast { position: fixed; right: 22px; bottom: 51px; z-index: 10; padding: 11px 15px; border: 1px solid #444; border-radius: 5px; color: #fff; background: #222; box-shadow: 0 10px 34px #0009; font-size: 11px; }
+    .toast[hidden] { display: none; }
+    @media (max-width: 700px) {
+      body { background-size: 14px 14px; }
+      .app-shell { width: 100%; height: 100vh; min-height: 480px; margin: 0; grid-template-rows: 43px 1fr 30px; border: 0; border-radius: 0; }
+      .workspace { grid-template-columns: 64px minmax(0, 1fr); }
+      .sidebar { align-items: center; padding: 14px 6px 9px; }
+      .profile { justify-content: center; padding: 0 0 15px; }
+      .profile-copy, .section-label, .nav-button span:not(.nav-icon), .contact-meta, .contact-presence, .sidebar-action span:not(.sidebar-icon) { display: none; }
+      .nav-list, .contact-list { width: 100%; justify-items: center; }
+      .nav-button, .contact-button { width: 43px; height: 41px; justify-content: center; padding: 0; }
+      .contact-avatar { width: 31px; height: 31px; }
+      .sidebar-actions { width: 100%; justify-items: center; }
+      .profile-actions { width: 100%; justify-items: center; }
+      .profile-actions .sidebar-action { width: 43px; }
+      .sidebar-action { width: 43px; height: 37px; padding: 0; font-size: 14px; }
+      .chat-header { padding: 0 12px; }
+      .conversation { padding: 19px 13px 13px; }
+      .composer-wrap { padding: 11px 11px 12px; }
+    }
+    @media (max-width: 390px) {
+      .workspace { grid-template-columns: 54px minmax(0, 1fr); }
+      .nav-button, .contact-button, .sidebar-action { width: 38px; }
+      .profile-actions .sidebar-action { width: 38px; }
+      .chat-heading { gap: 8px; }
+      .room-icon { width: 32px; height: 32px; }
+      .chat-heading h1 { font-size: 12px; }
+      .chat-heading p { font-size: 9px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell" aria-label="OpenChat messenger">
+    <header class="titlebar">
+      <div class="titlebar-brand"><span class="titlebar-mark" aria-hidden="true">O</span> OPENCHAT <span style="font-weight:400;opacity:.75">Instant Messenger</span></div>
+      <div class="window-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+    </header>
+    <div class="workspace">
+      <aside class="sidebar" aria-label="Navigation and contacts">
+        <div class="profile">
+          <button class="avatar" id="avatarButton" type="button" aria-label="Change profile picture" title="Change profile picture">OC</button>
+          <div class="profile-copy">
+            <button class="profile-name" id="editProfileNameButton" type="button" title="Edit your name">New user</button>
+            <button class="status-control" id="myCodeButton" type="button" aria-label="Copy your friend code"><span id="myCodeText">OC-…</span> · copy</button>
+          </div>
+        </div>
+        <div class="section-label">Chats</div>
+        <nav class="nav-list" id="roomList" aria-label="Chat rooms">
+          <button class="nav-button active" type="button" data-room="Global Chat" data-icon="#"><span class="nav-icon">#</span><span>Global Chat</span></button>
+        </nav>
+        <div class="section-label">Friends <span id="buddyCount" style="float:right;font-weight:400">0 online</span></div>
+        <div class="contact-list" id="contactList"></div>
+        <div class="section-label" id="requestsHeading" hidden>Friend requests</div>
+        <div class="request-list" id="requestList"></div>
+        <div class="sidebar-actions">
+          <button class="sidebar-action" id="connectPeerButton" type="button"><span class="sidebar-icon" aria-hidden="true">+</span><span>Add a friend</span></button>
+          <button class="sidebar-action" id="createRoomButton" type="button"><span class="sidebar-icon" aria-hidden="true">#</span><span>Create a room</span></button>
+          <div class="profile-actions">
+            <button class="sidebar-action" id="saveProfileButton" type="button" aria-label="Save encrypted profile" title="Save encrypted profile"><span class="sidebar-icon" aria-hidden="true">S</span><span>Save profile</span></button>
+            <button class="sidebar-action" id="restoreProfileButton" type="button" aria-label="Restore profile" title="Restore profile"><span class="sidebar-icon" aria-hidden="true">R</span><span>Restore</span></button>
+            <button class="sidebar-action" id="editNameButton" type="button" aria-label="Edit profile name" title="Edit profile name"><span class="sidebar-icon" aria-hidden="true">E</span><span>Edit name</span></button>
+            <button class="sidebar-action" id="regenerateCodeButton" type="button" aria-label="Generate new invite code" title="Generate new invite code"><span class="sidebar-icon" aria-hidden="true">N</span><span>New invite code</span></button>
+          </div>
+          <input id="profileFileInput" type="file" accept=".openchat,application/json" hidden>
+          <input id="avatarFileInput" type="file" accept="image/*" hidden>
+        </div>
+      </aside>
+      <section class="chat-panel" aria-label="Conversation">
+        <header class="chat-header">
+          <div class="chat-heading">
+            <div class="room-icon" id="roomIcon" aria-hidden="true">#</div>
+            <div><h1 id="chatTitle">Global Chat</h1></div>
+          </div>
+        </header>
+        <div class="conversation" id="conversation" aria-live="polite">
+        </div>
+        <div class="composer-wrap">
+          <form class="composer" id="messageForm">
+            <input id="messageInput" type="text" maxlength="500" autocomplete="off" placeholder="Say something nice..." aria-label="Type a message">
+            <button class="send-button" type="submit" aria-label="Send message">➤</button>
+          </form>
+        </div>
+      </section>
+    </div>
+    <footer class="statusbar">
+      <span class="statusbar-left"><span class="statusbar-dot" id="statusIndicator"></span><span id="connectionLabel"></span></span>
+    </footer>
+  </main>
+
+  <div class="modal-backdrop" id="modalBackdrop" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h2 id="modalTitle"></h2>
+      <p id="modalDescription"></p>
+      <form id="modalForm">
+        <label for="modalInput" id="modalLabel"></label>
+        <input id="modalInput" type="text" maxlength="32" autocomplete="off" required>
+        <div class="modal-actions">
+          <button type="button" id="cancelModal">Maybe later</button>
+          <button class="primary" type="submit" id="confirmModal"></button>
+        </div>
+      </form>
+    </section>
+  </div>
+  <div class="modal-backdrop" id="connectionBackdrop" hidden>
+    <section class="modal connection-modal" role="dialog" aria-modal="true" aria-labelledby="connectionTitle">
+      <h2 id="connectionTitle">Add a friend</h2>
+      <p id="connectionDescription">Exchange friend codes through a channel you trust. Codes aren’t cryptographic proof, and can’t route requests alone; connect directly to send one.</p>
+      <label id="displayNameLabel" for="displayNameInput">Your nickname</label>
+      <input id="displayNameInput" type="text" maxlength="32" value="New user" autocomplete="nickname">
+      <label for="friendCodeInput">Your friend’s code</label>
+      <input id="friendCodeInput" type="text" maxlength="18" placeholder="OC-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false">
+      <div id="connectionChoices" class="connection-choices">
+        <button class="primary" id="createInviteButton" type="button">Invite your friend</button>
+        <button id="joinInviteButton" type="button">Join their invite</button>
+      </div>
+      <div id="signalPanel" hidden>
+        <label for="signalText" id="signalLabel">Connection data</label>
+        <textarea id="signalText" spellcheck="false" autocomplete="off"></textarea>
+        <p class="signal-help" id="signalHelp"></p>
+        <div class="modal-actions">
+          <button type="button" id="cancelConnection">Close</button>
+          <button type="button" id="copySignal">Copy</button>
+          <button class="primary" type="button" id="signalAction"></button>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div class="modal-backdrop" id="profileBackdrop" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
+      <h2 id="profileModalTitle"></h2>
+      <p id="profileModalDescription"></p>
+      <form id="profileForm">
+        <label for="profilePassword" id="profilePasswordLabel">Password</label>
+        <input id="profilePassword" type="password" minlength="12" maxlength="256" autocomplete="new-password" required>
+        <div id="profileConfirmWrap">
+          <label for="profilePasswordConfirm">Confirm password</label>
+          <input id="profilePasswordConfirm" type="password" minlength="12" maxlength="256" autocomplete="new-password">
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="cancelProfile">Cancel</button>
+          <button class="primary" type="submit" id="confirmProfile"></button>
+        </div>
+      </form>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script>
+    const conversation = document.getElementById("conversation");
+    const modalBackdrop = document.getElementById("modalBackdrop");
+    const profileBackdrop = document.getElementById("profileBackdrop");
+    const modalInput = document.getElementById("modalInput");
+    const connectionBackdrop = document.getElementById("connectionBackdrop");
+    const signalText = document.getElementById("signalText");
+    const signalPanel = document.getElementById("signalPanel");
+    const connectionChoices = document.getElementById("connectionChoices");
+    const toast = document.getElementById("toast");
+    const peers = new Map();
+    let toastTimer;
+    let activeRoom = "Global Chat";
+    let activePeerId = null;
+    let modalAction = null;
+    let profileAction = null;
+    let profileImportFile = null;
+    let pendingConnection = null;
+    let connectionCommitted = false;
+    let signalingStep = "";
+    const storeKey = "openchat.device.v1";
+    let roomSocket = null;
+    let roomReconnectTimer = null;
+    let roomReconnectDelay = 1000;
+    let roomJoined = false;
+    let sharedRooms = ["Global Chat"];
+    let activeView = "room";
+
+    function createFriendCode(excludedCodes = []) {
+      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let formatted;
+      do {
+        const bytes = crypto.getRandomValues(new Uint8Array(12));
+        const code = Array.from(bytes, (byte) => alphabet[byte & 31]).join("");
+        formatted = `OC-${code.slice(0, 4)}-${code.slice(4, 8)}-${code.slice(8)}`;
+      } while (excludedCodes.includes(formatted));
+      return formatted;
+    }
+
+    function defaultState() {
+      const code = createFriendCode();
+      return {
+        version: 3,
+        identity: { code, inviteCode: createFriendCode([code]), name: "New user", avatar: null },
+        friends: [],
+        incomingRequests: [],
+        outgoingRequests: [],
+        messages: {},
+        roomMessages: {}
+      };
+    }
+
+    function isValidAvatar(value) {
+      return typeof value === "string" &&
+        value.length <= 6000 &&
+        /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(value);
+    }
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(storeKey);
+        if (!saved) return defaultState();
+        const parsed = JSON.parse(saved);
+        if (
+          ![1, 2, 3].includes(parsed?.version) ||
+          typeof parsed.identity?.code !== "string" ||
+          typeof parsed.identity?.name !== "string" ||
+          !/^OC-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/.test(parsed.identity.code) ||
+          !Array.isArray(parsed.friends) ||
+          !Array.isArray(parsed.incomingRequests) ||
+          !Array.isArray(parsed.outgoingRequests) ||
+          !parsed.messages ||
+          typeof parsed.messages !== "object" ||
+          (parsed.version >= 2 && (!parsed.roomMessages || typeof parsed.roomMessages !== "object")) ||
+          (parsed.version === 3 && (
+            typeof parsed.identity.inviteCode !== "string" ||
+            !/^OC-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/.test(parsed.identity.inviteCode) ||
+            (parsed.identity.avatar !== null && !isValidAvatar(parsed.identity.avatar))
+          ))
+        ) throw new Error("Saved device data has an unsupported format.");
+        if (parsed.version < 3) {
+          parsed.identity.inviteCode = parsed.identity.code;
+          parsed.identity.avatar = null;
+          for (const person of [...parsed.friends, ...parsed.incomingRequests, ...parsed.outgoingRequests]) {
+            person.avatar = null;
+          }
+          for (const histories of [parsed.messages, parsed.roomMessages || {}]) {
+            for (const history of Object.values(histories)) {
+              for (const message of history) message.avatar = null;
+            }
+          }
+          parsed.version = 3;
+        }
+        if (!parsed.roomMessages) {
+          parsed.roomMessages = {};
+        }
+        return parsed;
+      } catch (error) {
+        showToast(`Could not load saved OpenChat data: ${error.message}`);
+        return defaultState();
+      }
+    }
+
+    const appState = loadState();
+
+    function saveState() {
+      try {
+        localStorage.setItem(storeKey, JSON.stringify(appState));
+        return true;
+      } catch (error) {
+        showToast(`Could not save data on this device: ${error.message}`);
+        return false;
+      }
+    }
+
+    function validateProfileState(value) {
+      if (value && typeof value === "object" && [1, 2].includes(value.version) && value.identity) {
+        value.identity.inviteCode = value.identity.code;
+        value.identity.avatar = null;
+        value.roomMessages ||= {};
+        for (const person of [...(value.friends || []), ...(value.incomingRequests || []), ...(value.outgoingRequests || [])]) {
+          if (person && typeof person === "object") person.avatar = null;
+        }
+        for (const histories of [value.messages, value.roomMessages]) {
+          if (!histories || typeof histories !== "object") continue;
+          for (const history of Object.values(histories)) {
+            if (Array.isArray(history)) {
+              for (const message of history) {
+                if (message && typeof message === "object") message.avatar = null;
+              }
+            }
+          }
+        }
+        value.version = 3;
+      }
+      const validCode = (code) =>
+        typeof code === "string" &&
+        /^OC-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/.test(code);
+      const validPerson = (person) =>
+        person && typeof person === "object" &&
+        validCode(person.code) &&
+        typeof person.name === "string" && person.name.length <= 32 &&
+        (person.avatar === undefined || person.avatar === null || isValidAvatar(person.avatar));
+      const validRequests = (requests) =>
+        Array.isArray(requests) && requests.length <= 1000 &&
+        requests.every(validPerson);
+      const validMessages = (histories) => {
+        if (!histories || typeof histories !== "object" || Array.isArray(histories)) return false;
+        return Object.values(histories).every((history) =>
+          Array.isArray(history) && history.length <= 300 &&
+          history.every((message) =>
+            message && typeof message === "object" &&
+            typeof message.name === "string" && message.name.length <= 32 &&
+            typeof message.text === "string" && message.text.length <= 500 &&
+            typeof message.timestamp === "number" && Number.isFinite(message.timestamp) &&
+            (message.emoji === undefined || (typeof message.emoji === "string" && message.emoji.length <= 16)) &&
+            (message.avatar === undefined || message.avatar === null || isValidAvatar(message.avatar))
+          )
+        );
+      };
+      if (
+        !value || typeof value !== "object" ||
+        value.version !== 3 ||
+        !value.identity || !validCode(value.identity.code) ||
+        !validCode(value.identity.inviteCode) ||
+        typeof value.identity.name !== "string" || value.identity.name.length > 32 ||
+        (value.identity.avatar !== null && !isValidAvatar(value.identity.avatar)) ||
+        !Array.isArray(value.friends) || value.friends.length > 10000 || !value.friends.every(validPerson) ||
+        !validRequests(value.incomingRequests) || !validRequests(value.outgoingRequests) ||
+        !validMessages(value.messages) || !validMessages(value.roomMessages)
+      ) throw new Error("The profile data is invalid or unsupported.");
+      return value;
+    }
+
+    function bytesToBase64(bytes) {
+      let binary = "";
+      for (const byte of bytes) binary += String.fromCharCode(byte);
+      return btoa(binary);
+    }
+
+    function base64ToBytes(value) {
+      if (typeof value !== "string" || value.length > 32 * 1024 * 1024 || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) {
+        throw new Error("Invalid profile file.");
+      }
+      return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
+    }
+
+    async function deriveProfileKey(password, salt, iterations) {
+      const material = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(password),
+        "PBKDF2",
+        false,
+        ["deriveKey"]
+      );
+      return crypto.subtle.deriveKey(
+        { name: "PBKDF2", hash: "SHA-256", salt, iterations },
+        material,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+      );
+    }
+
+    async function exportProfile(password) {
+      const iterations = 310000;
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const key = await deriveProfileKey(password, salt, iterations);
+      const plaintext = new TextEncoder().encode(JSON.stringify(appState));
+      const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext);
+      const backup = {
+        format: "openchat-profile",
+        version: 1,
+        kdf: "PBKDF2-SHA-256",
+        iterations,
+        cipher: "AES-256-GCM",
+        salt: bytesToBase64(salt),
+        iv: bytesToBase64(iv),
+        ciphertext: bytesToBase64(new Uint8Array(ciphertext))
+      };
+      const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `openchat-profile-${new Date().toISOString().slice(0, 10)}.openchat`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    async function decryptProfile(file, password) {
+      if (file.size > 20 * 1024 * 1024) throw new Error("Profile files must be smaller than 20 MB.");
+      const backup = JSON.parse(await file.text());
+      if (
+        backup?.format !== "openchat-profile" ||
+        backup.version !== 1 ||
+        backup.kdf !== "PBKDF2-SHA-256" ||
+        backup.cipher !== "AES-256-GCM" ||
+        !Number.isInteger(backup.iterations) ||
+        backup.iterations < 100000 ||
+        backup.iterations > 1000000
+      ) throw new Error("This is not a supported OpenChat profile file.");
+      const salt = base64ToBytes(backup.salt);
+      const iv = base64ToBytes(backup.iv);
+      const ciphertext = base64ToBytes(backup.ciphertext);
+      if (salt.length !== 16 || iv.length !== 12 || ciphertext.length < 16) {
+        throw new Error("This profile file is incomplete or damaged.");
+      }
+      const key = await deriveProfileKey(password, salt, backup.iterations);
+      const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
+      return validateProfileState(JSON.parse(new TextDecoder().decode(plaintext)));
+    }
+
+    function openProfileDialog(action, file = null) {
+      profileAction = action;
+      profileImportFile = file;
+      const isExport = action === "export";
+      document.getElementById("profileModalTitle").textContent = isExport ? "Save profile" : "Restore profile";
+      document.getElementById("profileModalDescription").textContent = isExport
+        ? "Choose a password with at least 12 characters. You’ll need it to restore this file."
+        : "Enter the password used when this profile was saved.";
+      document.getElementById("profilePassword").value = "";
+      document.getElementById("profilePassword").autocomplete = isExport ? "new-password" : "current-password";
+      document.getElementById("profilePasswordConfirm").value = "";
+      document.getElementById("profileConfirmWrap").hidden = !isExport;
+      document.getElementById("profilePasswordConfirm").required = isExport;
+      document.getElementById("confirmProfile").textContent = isExport ? "Save file" : "Restore profile";
+      profileBackdrop.hidden = false;
+      document.getElementById("profilePassword").focus();
+    }
+
+    function closeProfileDialog() {
+      profileBackdrop.hidden = true;
+      document.getElementById("profileForm").reset();
+      profileAction = null;
+      profileImportFile = null;
+    }
+
+    async function importProfile(file, password) {
+      const restored = await decryptProfile(file, password);
+      if (!window.confirm("Replace the profile currently saved in this browser with the profile from this file?")) return false;
+      try {
+        localStorage.setItem(storeKey, JSON.stringify(restored));
+      } catch (error) {
+        throw new Error(`Could not save the restored profile on this device: ${error.message}`);
+      }
+      Object.keys(appState).forEach((key) => delete appState[key]);
+      Object.assign(appState, restored);
+      updateIdentityDisplay();
+      renderPeople();
+      renderRequests();
+      selectRoom("Global Chat");
+      return true;
+    }
+
+    function normalizeFriendCode(value) {
+      if (typeof value !== "string") return null;
+      const characters = value.trim().toUpperCase().replace(/^OC[-\s]?/, "").replace(/[^A-HJ-NP-Z2-9]/g, "");
+      if (characters.length !== 12) return null;
+      return `OC-${characters.slice(0, 4)}-${characters.slice(4, 8)}-${characters.slice(8)}`;
+    }
+
+    function updateIdentityDisplay() {
+      document.getElementById("editProfileNameButton").textContent = appState.identity.name;
+      document.getElementById("myCodeText").textContent = appState.identity.inviteCode;
+      document.getElementById("displayNameInput").value = appState.identity.name;
+      const avatar = document.getElementById("avatarButton");
+      avatar.replaceChildren();
+      if (appState.identity.avatar) {
+        const image = document.createElement("img");
+        image.src = appState.identity.avatar;
+        image.alt = "";
+        avatar.append(image);
+      } else {
+        avatar.textContent = appState.identity.name.trim().slice(0, 2).toUpperCase() || "OC";
+      }
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.hidden = true; }, 3000);
+    }
+
+    function showModal({ title, description, label, placeholder, confirm, initialValue = "", action }) {
+      document.getElementById("modalTitle").textContent = title;
+      document.getElementById("modalDescription").textContent = description;
+      document.getElementById("modalLabel").textContent = label;
+      document.getElementById("confirmModal").textContent = confirm;
+      modalInput.placeholder = placeholder;
+      modalInput.value = initialValue;
+      modalAction = action;
+      modalBackdrop.hidden = false;
+      modalInput.focus();
+    }
+
+    function closeModal() {
+      modalBackdrop.hidden = true;
+      modalAction = null;
+    }
+
+    function updateProfileName() {
+      const name = document.getElementById("displayNameInput").value.trim().slice(0, 32) || "New user";
+      const changed = appState.identity.name !== name;
+      appState.identity.name = name;
+      updateIdentityDisplay();
+      refreshOwnMessageProfiles();
+      if (saveState() && changed) publishProfileUpdate();
+      return name;
+    }
+
+    function createElement(tag, className, text) {
+      const element = document.createElement(tag);
+      if (className) element.className = className;
+      if (text) element.textContent = text;
+      return element;
+    }
+
+    function setAvatar(element, avatar, fallback) {
+      element.replaceChildren();
+      if (isValidAvatar(avatar)) {
+        const image = document.createElement("img");
+        image.src = avatar;
+        image.alt = "";
+        element.append(image);
+      } else {
+        element.textContent = fallback;
+      }
+    }
+
+    function refreshOwnMessageProfiles() {
+      for (const history of Object.values(appState.messages)) {
+        for (const message of history) {
+          if (message.own) {
+            message.name = appState.identity.name;
+            message.avatar = appState.identity.avatar;
+          }
+        }
+      }
+      for (const history of Object.values(appState.roomMessages)) {
+        for (const message of history) {
+          if (message.code === appState.identity.code) {
+            message.name = appState.identity.name;
+            message.avatar = appState.identity.avatar;
+          }
+        }
+      }
+      if (activeView === "peer" && activePeerId) {
+        const peer = peers.get(activePeerId);
+        if (peer) renderConversation(peer.code);
+      } else if (activeView === "room") {
+        renderRoomConversation(activeRoom);
+      }
+    }
+
+    function publishProfileUpdate() {
+      const profile = {
+        type: "profile-update",
+        code: appState.identity.code,
+        inviteCode: appState.identity.inviteCode,
+        name: appState.identity.name,
+        avatar: appState.identity.avatar
+      };
+      if (roomJoined && roomSocket?.readyState === WebSocket.OPEN) roomSocket.send(JSON.stringify(profile));
+      for (const peer of peers.values()) {
+        if (peer.channel?.readyState !== "open") continue;
+        try {
+          peer.channel.send(JSON.stringify(profile));
+        } catch (error) {
+          showToast(`Could not update your profile for ${peer.name}.`);
+        }
+      }
+    }
+
+    function updatePeerProfile(peer, profile) {
+      if (
+        profile.code !== peer.code ||
+        typeof profile.name !== "string" ||
+        profile.name.length > 32 ||
+        (profile.avatar !== null && !isValidAvatar(profile.avatar)) ||
+        typeof profile.inviteCode !== "string" ||
+        normalizeFriendCode(profile.inviteCode) !== profile.inviteCode
+      ) return;
+      peer.name = profile.name.trim() || "New peer";
+      peer.inviteCode = profile.inviteCode;
+      peer.avatar = profile.avatar;
+      const friend = getFriend(peer.code);
+      if (friend) {
+        friend.name = peer.name;
+        friend.avatar = peer.avatar;
+        friend.inviteCode = peer.inviteCode;
+      }
+      for (const request of [...appState.incomingRequests, ...appState.outgoingRequests]) {
+        if (request.code === peer.code) {
+          request.name = peer.name;
+          request.avatar = peer.avatar;
+        }
+      }
+      for (const message of appState.messages[peer.code] || []) {
+        if (!message.own) {
+          message.name = peer.name;
+          message.avatar = peer.avatar;
+        }
+      }
+      saveState();
+      renderPeople();
+      renderRequests();
+      if (activePeerId === peer.id) {
+        setAvatar(document.getElementById("roomIcon"), peer.avatar, peer.name.trim().slice(0, 1).toUpperCase() || "?");
+        renderConversation(peer.code);
+      }
+    }
+
+    function getFriend(code) {
+      return appState.friends.find((friend) => friend.code === code);
+    }
+
+    function saveFriend(code, name, emoji = "?", avatar = null, inviteCode = code) {
+      const existing = getFriend(code);
+      if (existing) {
+        existing.name = name;
+        existing.emoji = emoji;
+        existing.avatar = avatar;
+        existing.inviteCode = inviteCode;
+        existing.lastSeen = Date.now();
+      } else {
+        appState.friends.push({ code, inviteCode, name, emoji, avatar, lastSeen: Date.now() });
+      }
+      appState.outgoingRequests = appState.outgoingRequests.filter((request) => request.code !== code);
+      appState.incomingRequests = appState.incomingRequests.filter((request) => request.code !== code);
+      saveState();
+      renderPeople();
+      renderRequests();
+    }
+
+    function renderPeople() {
+      const list = document.getElementById("contactList");
+      list.replaceChildren();
+      const activePeers = [...peers.values()].filter((peer) => peer.channel?.readyState === "open" && peer.code);
+      const displayedCodes = new Set();
+      for (const friend of appState.friends) {
+        const peer = activePeers.find((candidate) => candidate.code === friend.code);
+        displayedCodes.add(friend.code);
+        list.append(createPersonButton(friend, peer, peer ? "online · direct" : "offline · saved here"));
+      }
+      for (const peer of activePeers) {
+        if (displayedCodes.has(peer.code)) continue;
+        const pending = appState.outgoingRequests.some((request) => request.code === peer.code);
+        list.append(createPersonButton(peer, peer, pending ? "friend request sent" : "connected · not added"));
+      }
+      document.getElementById("buddyCount").textContent = `${activePeers.length} online`;
+      document.getElementById("statusIndicator").classList.toggle("online", activePeers.length > 0);
+    }
+
+    function createPersonButton(person, peer, detail) {
+      const button = createElement("button", "contact-button");
+      button.type = "button";
+      button.dataset.peerCode = person.code;
+      const avatar = createElement("span", "contact-avatar");
+      setAvatar(avatar, person.avatar, person.name.trim().slice(0, 1).toUpperCase() || "?");
+      button.append(avatar);
+      const meta = createElement("span", "contact-meta");
+      meta.append(createElement("strong", "", person.name), createElement("small", "", detail));
+      button.append(meta, createElement("span", `contact-presence${peer ? "" : " away"}`));
+      return button;
+    }
+
+    function renderRequests() {
+      const list = document.getElementById("requestList");
+      const heading = document.getElementById("requestsHeading");
+      list.replaceChildren();
+      heading.hidden = appState.incomingRequests.length === 0 && appState.outgoingRequests.length === 0;
+      for (const request of appState.incomingRequests) {
+        const card = createElement("div", "request-card");
+        card.append(createElement("strong", "", request.name));
+        card.append(createElement("small", "", request.code));
+        const actions = createElement("div", "request-card-actions");
+        const accept = createElement("button", "", "Accept");
+        accept.type = "button";
+        accept.dataset.requestAction = "accept";
+        accept.dataset.requestCode = request.code;
+        const reject = createElement("button", "", "Ignore");
+        reject.type = "button";
+        reject.dataset.requestAction = "reject";
+        reject.dataset.requestCode = request.code;
+        actions.append(accept, reject);
+        card.append(actions);
+        list.append(card);
+      }
+      for (const request of appState.outgoingRequests) {
+        const card = createElement("div", "request-card");
+        card.append(createElement("strong", "", request.name));
+        card.append(createElement("small", "", `${request.code} · request sent`));
+        list.append(card);
+      }
+    }
+
+    function removePeer(peer) {
+      peers.delete(peer.id);
+      renderPeople();
+      if (activePeerId === peer.id) {
+        activePeerId = null;
+        if (activeView === "peer") document.getElementById("connectionLabel").textContent = "";
+      }
+    }
+
+    function renderConversation(code) {
+      conversation.replaceChildren();
+      for (const message of appState.messages[code] || []) appendMessage(message);
+    }
+
+    function renderRoomConversation(name) {
+      conversation.replaceChildren();
+      for (const message of appState.roomMessages[name] || []) appendMessage(message);
+    }
+
+    function updateRoomStatus() {
+      const connected = roomSocket?.readyState === WebSocket.OPEN;
+      if (activeView === "room") {
+        document.getElementById("connectionLabel").textContent = connected ? "Online" : "";
+        document.getElementById("statusIndicator").classList.toggle("online", connected);
+      }
+    }
+
+    function joinActiveRoom() {
+      if (activeView !== "room" || roomSocket?.readyState !== WebSocket.OPEN) return;
+      roomSocket.send(JSON.stringify({
+        type: "join",
+        room: activeRoom,
+        code: appState.identity.code,
+          inviteCode: appState.identity.inviteCode,
+          name: updateProfileName(),
+          avatar: appState.identity.avatar
+      }));
+      roomJoined = false;
+    }
+
+    function selectRoom(name) {
+      activeView = "room";
+      activePeerId = null;
+      activeRoom = name;
+      document.querySelectorAll(".nav-button").forEach((item) => {
+        item.classList.toggle("active", item.dataset.room === name);
+      });
+      document.getElementById("chatTitle").textContent = name;
+      document.getElementById("roomIcon").textContent = "#";
+      renderRoomConversation(name);
+      updateRoomStatus();
+      joinActiveRoom();
+    }
+
+    function renderRoomList(rooms) {
+      const validRooms = rooms.filter((room) =>
+        typeof room === "string" && room.length > 0 && room.length <= 32
+      );
+      if (!validRooms.includes("Global Chat")) validRooms.unshift("Global Chat");
+      sharedRooms = [...new Set(validRooms)];
+      const list = document.getElementById("roomList");
+      list.replaceChildren();
+      for (const room of sharedRooms) {
+        const button = createElement("button", `nav-button${activeView === "room" && room === activeRoom ? " active" : ""}`);
+        button.type = "button";
+        button.dataset.room = room;
+        button.dataset.icon = "#";
+        button.append(createElement("span", "nav-icon", button.dataset.icon), createElement("span", "", room));
+        list.append(button);
+      }
+      if (activeView === "room" && !sharedRooms.includes(activeRoom)) selectRoom("Global Chat");
+    }
+
+    function handleRoomServerMessage(raw) {
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        showToast("The shared chat server sent an unreadable response.");
+        return;
+      }
+      if (!payload || typeof payload !== "object") return;
+      if (payload.type === "room-list" && Array.isArray(payload.rooms)) {
+        renderRoomList(payload.rooms);
+        return;
+      }
+      if (payload.type === "room-created" && typeof payload.room === "string") {
+        if (!sharedRooms.includes(payload.room)) renderRoomList([...sharedRooms, payload.room]);
+        selectRoom(payload.room);
+        showToast("Room created.");
+        return;
+      }
+      if (payload.type === "joined" && payload.room === activeRoom && activeView === "room") {
+        roomJoined = true;
+        updateRoomStatus();
+        return;
+      }
+      if (
+        payload.type === "profile" &&
+        typeof payload.room === "string" &&
+        typeof payload.code === "string" &&
+        typeof payload.name === "string" &&
+        (payload.avatar === null || isValidAvatar(payload.avatar))
+      ) {
+        const history = appState.roomMessages[payload.room] || [];
+        for (const message of history) {
+          if (message.code === payload.code) {
+            message.name = payload.name;
+            message.avatar = payload.avatar;
+          }
+        }
+        saveState();
+        if (activeView === "room" && activeRoom === payload.room) renderRoomConversation(activeRoom);
+        return;
+      }
+      if (
+        payload.type === "room-message" &&
+        typeof payload.room === "string" &&
+        typeof payload.code === "string" &&
+        typeof payload.name === "string" &&
+        typeof payload.text === "string" &&
+        payload.text.length <= 500 &&
+        Number.isFinite(payload.timestamp)
+      ) {
+        const message = {
+          code: payload.code,
+          name: payload.name,
+          emoji: "?",
+          avatar: isValidAvatar(payload.avatar) ? payload.avatar : null,
+          text: payload.text,
+          own: payload.code === appState.identity.code,
+          timestamp: payload.timestamp
+        };
+        const history = appState.roomMessages[payload.room] || (appState.roomMessages[payload.room] = []);
+        history.push(message);
+        if (history.length > 300) history.splice(0, history.length - 300);
+        saveState();
+        if (activeView === "room" && activeRoom === payload.room) appendMessage(message);
+        return;
+      }
+      if (payload.type === "error" && typeof payload.message === "string") {
+        showToast(payload.message);
+      }
+    }
+
+    function connectRoomServer() {
+      if (location.protocol === "file:") {
+        updateRoomStatus();
+        return;
+      }
+      const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+      roomSocket = new WebSocket(`${protocol}//${location.host}/ws`);
+      roomSocket.addEventListener("open", () => {
+        roomJoined = false;
+        roomReconnectDelay = 1000;
+        updateRoomStatus();
+        roomSocket.send(JSON.stringify({ type: "list-rooms" }));
+        joinActiveRoom();
+      });
+      roomSocket.addEventListener("message", (event) => handleRoomServerMessage(event.data));
+      roomSocket.addEventListener("error", () => {
+        updateRoomStatus();
+      });
+      roomSocket.addEventListener("close", () => {
+        roomJoined = false;
+        updateRoomStatus();
+        clearTimeout(roomReconnectTimer);
+        roomReconnectTimer = setTimeout(connectRoomServer, roomReconnectDelay);
+        roomReconnectDelay = Math.min(roomReconnectDelay * 2, 30000);
+      });
+    }
+
+    function selectPeer(peer) {
+      activeView = "peer";
+      activePeerId = peer.id;
+      activeRoom = peer.name;
+      document.querySelectorAll(".nav-button").forEach((item) => item.classList.remove("active"));
+      document.getElementById("chatTitle").textContent = peer.name;
+      setAvatar(document.getElementById("roomIcon"), peer.avatar, peer.name.trim().slice(0, 1).toUpperCase() || "?");
+      document.getElementById("connectionLabel").textContent = "Online";
+      document.getElementById("statusIndicator").classList.add("online");
+      renderConversation(peer.code);
+    }
+
+    function appendMessage({ name, emoji, avatar: profileImage, text, own = false, timestamp = Date.now() }) {
+      const article = createElement("article", `message${own ? " own" : ""}`);
+      const avatar = createElement("div", "message-avatar");
+      setAvatar(avatar, profileImage, name.trim().slice(0, 1).toUpperCase() || "?");
+      avatar.setAttribute("aria-hidden", "true");
+      const body = createElement("div", "message-body");
+      const topline = createElement("div", "message-topline");
+      const author = createElement("strong", "", name);
+      const time = createElement("time", "", new Intl.DateTimeFormat([], { hour: "numeric", minute: "2-digit" }).format(new Date(timestamp)));
+      const messageText = createElement("p", "message-text", text);
+      topline.append(author, time);
+      body.append(topline, messageText);
+      article.append(avatar, body);
+      conversation.append(article);
+      conversation.scrollTop = conversation.scrollHeight;
+    }
+
+    function recordMessage(peer, message) {
+      if (!peer.code) {
+        showToast("The peer has not shared a friend code yet; this message cannot be saved.");
+        return;
+      }
+      const history = appState.messages[peer.code] || (appState.messages[peer.code] = []);
+      history.push({ ...message, timestamp: Date.now() });
+      if (history.length > 300) history.splice(0, history.length - 300);
+      saveState();
+      if (activePeerId === peer.id) appendMessage(message);
+    }
+
+    function handlePeerPayload(peer, raw) {
+      if (typeof raw !== "string" || raw.length > 8192) {
+        showToast("Ignored an invalid or oversized peer message.");
+        return;
+      }
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch (error) {
+        showToast("Received an unreadable message from a peer.");
+        return;
+      }
+      if (!payload || typeof payload !== "object") {
+        showToast("Received an invalid message from a peer.");
+        return;
+      }
+      if (
+        payload.type === "hello" &&
+        typeof payload.name === "string" &&
+        normalizeFriendCode(payload.code) === payload.code &&
+        normalizeFriendCode(payload.inviteCode) === payload.inviteCode &&
+        (payload.avatar === null || isValidAvatar(payload.avatar))
+      ) {
+        peer.name = payload.name.trim().replace(/[\u0000-\u001f]/g, "").slice(0, 32) || "New peer";
+        peer.code = payload.code;
+        peer.inviteCode = payload.inviteCode;
+        peer.avatar = payload.avatar;
+        if (peer.expectedCode && peer.inviteCode !== peer.expectedCode) {
+          peer.friendCodeMatchesExpected = false;
+          renderPeople();
+          showToast(`Invite code mismatch. Expected ${peer.expectedCode}; connected peer shared ${peer.inviteCode}.`);
+          return;
+        }
+        peer.friendCodeMatchesExpected = true;
+        if (!appState.outgoingRequests.some((request) => request.code === peer.code) && !getFriend(peer.code)) {
+          appState.outgoingRequests.push({
+            code: peer.code,
+            inviteCode: peer.inviteCode,
+            name: peer.name,
+            avatar: peer.avatar,
+            sentAt: Date.now()
+          });
+          saveState();
+        }
+        renderPeople();
+        selectPeer(peer);
+        peer.channel.send(JSON.stringify({ type: "friend-request", code: appState.identity.code, name: appState.identity.name }));
+        return;
+      }
+      if (payload.type === "profile-update") {
+        updatePeerProfile(peer, payload);
+        return;
+      }
+      if (payload.type === "friend-request" && typeof payload.code === "string" && typeof payload.name === "string") {
+        if (!peer.friendCodeMatchesExpected || payload.code !== peer.code) {
+          showToast("Ignored a friend request that did not match the verified friend code.");
+          return;
+        }
+        const existingFriend = getFriend(peer.code);
+        if (existingFriend) {
+          peer.channel.send(JSON.stringify({ type: "friend-accepted", code: appState.identity.code }));
+          return;
+        }
+        if (!appState.incomingRequests.some((request) => request.code === peer.code)) {
+          appState.incomingRequests.push({
+            code: peer.code,
+            inviteCode: peer.inviteCode,
+            name: peer.name,
+            emoji: peer.emoji,
+            avatar: peer.avatar,
+            receivedAt: Date.now()
+          });
+          saveState();
+        }
+        renderRequests();
+        renderPeople();
+        showToast(`Friend request from ${peer.name}. Compare their code before accepting.`);
+        return;
+      }
+      if (payload.type === "friend-accepted" && payload.code === peer.code) {
+        saveFriend(peer.code, peer.name, peer.emoji, peer.avatar, peer.inviteCode);
+        showToast(`${peer.name} accepted your friend request.`);
+        return;
+      }
+      if (payload.type === "friend-rejected" && payload.code === peer.code) {
+        appState.outgoingRequests = appState.outgoingRequests.filter((request) => request.code !== peer.code);
+        saveState();
+        renderPeople();
+        showToast(`${peer.name} declined the friend request.`);
+        return;
+      }
+      if (payload.type === "message" && peer.friendCodeMatchesExpected && typeof payload.text === "string" && payload.text.length <= 500) {
+        recordMessage(peer, { name: peer.name, emoji: peer.emoji, avatar: peer.avatar, text: payload.text, own: false });
+        return;
+      }
+      showToast("Received an unsupported message from a peer.");
+    }
+
+    function attachDataChannel(peer, channel) {
+      peer.channel = channel;
+      channel.onopen = () => {
+        channel.send(JSON.stringify({
+          type: "hello",
+          name: updateProfileName(),
+          code: appState.identity.code,
+          inviteCode: appState.identity.inviteCode,
+          avatar: appState.identity.avatar
+        }));
+        closeConnectionDialog();
+        showToast("Direct DTLS-encrypted connection opened. Verifying friend code…");
+      };
+      channel.onmessage = (event) => handlePeerPayload(peer, event.data);
+      channel.onclose = () => {
+        removePeer(peer);
+        showToast(`${peer.name} disconnected.`);
+      };
+      channel.onerror = () => showToast(`The data channel with ${peer.name} encountered an error.`);
+    }
+
+    function createPeerConnection(expectedCode) {
+      if (!("RTCPeerConnection" in window)) throw new Error("This browser does not support WebRTC peer connections.");
+      const connection = new RTCPeerConnection({ iceServers: [] });
+      const peer = {
+        id: crypto.randomUUID(),
+        connection,
+        channel: null,
+        name: "New peer",
+        code: null,
+        expectedCode,
+        friendCodeMatchesExpected: false,
+        emoji: "?",
+        avatar: null,
+      };
+      peers.set(peer.id, peer);
+      connection.ondatachannel = (event) => attachDataChannel(peer, event.channel);
+      connection.onconnectionstatechange = () => {
+        if (connection.connectionState === "failed") {
+          showToast("Direct connection failed. Your network may require a STUN/TURN service.");
+        }
+        if (connection.connectionState === "closed") {
+          removePeer(peer);
+        }
+      };
+      return peer;
+    }
+
+    function discardPendingConnection() {
+      if (!pendingConnection) return;
+      const peer = pendingConnection;
+      pendingConnection = null;
+      peer.connection.close();
+      removePeer(peer);
+    }
+
+    function waitForIceGathering(connection) {
+      if (connection.iceGatheringState === "complete") return Promise.resolve();
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          connection.removeEventListener("icegatheringstatechange", onStateChange);
+          reject(new Error("ICE gathering timed out. Check your network and try again."));
+        }, 20000);
+        function onStateChange() {
+          if (connection.iceGatheringState === "complete") {
+            clearTimeout(timeout);
+            connection.removeEventListener("icegatheringstatechange", onStateChange);
+            resolve();
+          }
+        }
+        connection.addEventListener("icegatheringstatechange", onStateChange);
+      });
+    }
+
+    function parseSignal(value, expectedType) {
+      let signal;
+      try {
+        signal = JSON.parse(value);
+      } catch (error) {
+        throw new Error("That isn’t valid invite data. Paste the complete JSON you received.");
+      }
+      if (!signal || signal.type !== expectedType || typeof signal.sdp !== "string" || signal.sdp.length > 100000) {
+        throw new Error(`Expected a valid ${expectedType} invite. Check that you copied the entire message.`);
+      }
+      return { type: signal.type, sdp: signal.sdp };
+    }
+
+    function setSignalPanel(step, help) {
+      signalingStep = step;
+      connectionChoices.hidden = true;
+      signalPanel.hidden = false;
+      signalText.readOnly = step === "offer-ready" || step === "answer-ready";
+      signalText.value = "";
+      signalText.placeholder = step === "waiting-answer" ? "Paste the answer from your peer here" : "Paste the invite you received here";
+      document.getElementById("signalHelp").textContent = help;
+      document.getElementById("signalAction").textContent = ({
+        "offer-ready": "Paste their answer",
+        "waiting-answer": "Connect",
+        "joining-offer": "Create answer",
+        "answer-ready": "Done"
+      })[step];
+    }
+
+    async function createInvite() {
+      try {
+        connectionCommitted = false;
+        updateProfileName();
+        const expectedCode = normalizeFriendCode(document.getElementById("friendCodeInput").value);
+        if (!expectedCode) {
+          showToast("Enter the 12-character friend code they shared with you.");
+          return;
+        }
+        if (expectedCode === appState.identity.inviteCode) {
+          showToast("That’s your own friend code. Enter someone else’s code.");
+          return;
+        }
+        const peer = createPeerConnection(expectedCode);
+        pendingConnection = peer;
+        const channel = peer.connection.createDataChannel("openchat-chat", { ordered: true });
+        attachDataChannel(peer, channel);
+        const offer = await peer.connection.createOffer();
+        await peer.connection.setLocalDescription(offer);
+        await waitForIceGathering(peer.connection);
+        signalText.value = JSON.stringify(peer.connection.localDescription);
+        setSignalPanel("offer-ready", "Send this one-time invite to the intended person using a channel you trust. It contains connection details; only share it with them.");
+        signalText.value = JSON.stringify(peer.connection.localDescription);
+        signalText.readOnly = true;
+        signalText.select();
+      } catch (error) {
+        discardPendingConnection();
+        showToast(error.message || "Could not create a peer invite.");
+      }
+    }
+
+    async function receiveOffer() {
+      try {
+        connectionCommitted = false;
+        const expectedCode = normalizeFriendCode(document.getElementById("friendCodeInput").value);
+        if (!expectedCode) {
+          showToast("Enter the 12-character friend code they shared with you.");
+          return;
+        }
+        if (expectedCode === appState.identity.inviteCode) {
+          showToast("That’s your own friend code. Enter someone else’s code.");
+          return;
+        }
+        const description = parseSignal(signalText.value, "offer");
+        const peer = createPeerConnection(expectedCode);
+        pendingConnection = peer;
+        await peer.connection.setRemoteDescription(description);
+        const answer = await peer.connection.createAnswer();
+        await peer.connection.setLocalDescription(answer);
+        await waitForIceGathering(peer.connection);
+        setSignalPanel("answer-ready", "Send this answer back to the person who shared the invite. Keep it on a channel you trust.");
+        signalText.value = JSON.stringify(peer.connection.localDescription);
+        signalText.readOnly = true;
+        signalText.select();
+      } catch (error) {
+        discardPendingConnection();
+        showToast(error.message || "Could not join that peer invite.");
+      }
+    }
+
+    async function receiveAnswer() {
+      try {
+        if (!pendingConnection) throw new Error("This invite has expired. Create a new one and try again.");
+        const description = parseSignal(signalText.value, "answer");
+        await pendingConnection.connection.setRemoteDescription(description);
+        connectionCommitted = true;
+        document.getElementById("signalHelp").textContent = "Answer received. Waiting for the direct connection to open…";
+        document.getElementById("signalAction").disabled = true;
+      } catch (error) {
+        showToast(error.message || "Could not apply the peer answer.");
+      }
+    }
+
+    function closeConnectionDialog(keepConnection = false) {
+      connectionBackdrop.hidden = true;
+      if (keepConnection) connectionCommitted = true;
+      if (pendingConnection && !connectionCommitted && pendingConnection.channel?.readyState !== "open") discardPendingConnection();
+      else pendingConnection = null;
+      connectionCommitted = false;
+    }
+
+    function openConnectionDialog() {
+      connectionChoices.hidden = false;
+      signalPanel.hidden = true;
+      signalText.value = "";
+      pendingConnection = null;
+      connectionCommitted = false;
+      signalingStep = "";
+      document.getElementById("signalAction").disabled = false;
+      document.getElementById("displayNameInput").value = appState.identity.name;
+      document.getElementById("friendCodeInput").value = "";
+      connectionBackdrop.hidden = false;
+    }
+
+    document.getElementById("messageForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const input = document.getElementById("messageInput");
+      const text = input.value.trim();
+      if (!text) return;
+      if (activeView === "room") {
+        if (roomSocket?.readyState !== WebSocket.OPEN) {
+          showToast("Shared chat is reconnecting. Your message was not sent.");
+          return;
+        }
+        try {
+          roomSocket.send(JSON.stringify({ type: "room-message", room: activeRoom, text }));
+          input.value = "";
+        } catch (error) {
+          showToast("The message could not be sent to the shared room.");
+        }
+        return;
+      }
+      const peer = peers.get(activePeerId);
+      if (!peer || peer.channel?.readyState !== "open") {
+        showToast("Connect directly to a peer before sending a message.");
+        return;
+      }
+      if (!peer.friendCodeMatchesExpected) {
+        showToast("The peer code does not match. Reconnect with the correct friend code.");
+        return;
+      }
+      const message = {
+        name: updateProfileName(),
+        emoji: "?",
+        avatar: appState.identity.avatar,
+        text,
+        own: true
+      };
+      try {
+        peer.channel.send(JSON.stringify({ type: "message", text }));
+      } catch (error) {
+        showToast("The message could not be sent. Check the peer connection and try again.");
+        return;
+      }
+      recordMessage(peer, message);
+      input.value = "";
+    });
+
+    document.getElementById("roomList").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-room]");
+      if (!button) return;
+      selectRoom(button.dataset.room);
+    });
+
+    document.getElementById("contactList").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-peer-code]");
+      if (!button) return;
+      const peer = [...peers.values()].find((candidate) => candidate.code === button.dataset.peerCode && candidate.channel?.readyState === "open");
+      if (peer) {
+        selectPeer(peer);
+        return;
+      }
+      const friend = getFriend(button.dataset.peerCode);
+      if (!friend) return;
+      activePeerId = null;
+      activeView = "peer";
+      activeRoom = friend.name;
+      document.querySelectorAll(".nav-button").forEach((item) => item.classList.remove("active"));
+      document.getElementById("chatTitle").textContent = friend.name;
+      setAvatar(document.getElementById("roomIcon"), friend.avatar, friend.name.trim().slice(0, 1).toUpperCase() || "?");
+      document.getElementById("connectionLabel").textContent = "";
+      document.getElementById("statusIndicator").classList.remove("online");
+      renderConversation(friend.code);
+    });
+
+    document.getElementById("requestList").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-request-action]");
+      if (!button) return;
+      const request = appState.incomingRequests.find((item) => item.code === button.dataset.requestCode);
+      if (!request) return;
+      const peer = [...peers.values()].find((candidate) => candidate.code === request.code && candidate.channel?.readyState === "open");
+      if (button.dataset.requestAction === "accept") {
+        if (peer && peer.friendCodeMatchesExpected) {
+          peer.channel.send(JSON.stringify({ type: "friend-accepted", code: appState.identity.code }));
+        }
+        saveFriend(request.code, request.name, request.emoji, request.avatar, request.inviteCode);
+        showToast(peer ? `${request.name} added to your friends.` : `${request.name} saved. They’ll be added when you reconnect.`);
+        return;
+      }
+      if (button.dataset.requestAction === "reject") {
+        if (peer && peer.friendCodeMatchesExpected) {
+          peer.channel.send(JSON.stringify({ type: "friend-rejected", code: appState.identity.code }));
+        }
+        appState.incomingRequests = appState.incomingRequests.filter((item) => item.code !== request.code);
+        saveState();
+        renderRequests();
+        renderPeople();
+        showToast(`Ignored the request from ${request.name}.`);
+      }
+    });
+
+    document.getElementById("createRoomButton").addEventListener("click", () => showModal({
+      title: "Make a room", description: "", label: "Room name", placeholder: "Room name", confirm: "Create room",
+      action: (name) => {
+        if (roomSocket?.readyState !== WebSocket.OPEN) {
+          showToast("Connect to the OpenChat server before creating a shared room.");
+          return;
+        }
+        if (sharedRooms.some((room) => room.toLowerCase() === name.toLowerCase())) {
+          showToast(`${name} already exists on this server.`);
+          return;
+        }
+        roomSocket.send(JSON.stringify({ type: "create-room", room: name }));
+      }
+    }));
+
+    document.getElementById("saveProfileButton").addEventListener("click", () => openProfileDialog("export"));
+    document.getElementById("restoreProfileButton").addEventListener("click", () => {
+      document.getElementById("profileFileInput").click();
+    });
+    document.getElementById("profileFileInput").addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      event.target.value = "";
+      if (file) openProfileDialog("import", file);
+    });
+    document.getElementById("profileForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const password = document.getElementById("profilePassword").value;
+      try {
+        if (profileAction === "export") {
+          if (password.length < 12) {
+            showToast("Use a password with at least 12 characters.");
+            return;
+          }
+          if (password !== document.getElementById("profilePasswordConfirm").value) {
+            showToast("The passwords do not match.");
+            return;
+          }
+          await exportProfile(password);
+          closeProfileDialog();
+          showToast("Encrypted profile saved.");
+          return;
+        }
+        if (profileAction === "import" && profileImportFile) {
+          const restored = await importProfile(profileImportFile, password);
+          closeProfileDialog();
+          if (restored) showToast("Profile restored.");
+        }
+      } catch (error) {
+        showToast(profileAction === "import"
+          ? `Could not restore profile. Check the password and file. ${error.message}`
+          : `Could not save profile: ${error.message}`);
+      }
+    });
+    document.getElementById("cancelProfile").addEventListener("click", closeProfileDialog);
+    profileBackdrop.addEventListener("click", (event) => {
+      if (event.target === profileBackdrop) closeProfileDialog();
+    });
+
+    document.getElementById("modalForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const value = modalInput.value.trim().replace(/^@/, "");
+      if (!value) return;
+      const action = modalAction;
+      closeModal();
+      if (action) action(value);
+    });
+    document.getElementById("cancelModal").addEventListener("click", closeModal);
+    modalBackdrop.addEventListener("click", (event) => { if (event.target === modalBackdrop) closeModal(); });
+    document.getElementById("connectPeerButton").addEventListener("click", openConnectionDialog);
+    document.getElementById("createInviteButton").addEventListener("click", createInvite);
+    document.getElementById("joinInviteButton").addEventListener("click", () => setSignalPanel("joining-offer", "Paste their one-time invite. Friend requests are sent only after the direct connection verifies the code you entered."));
+    document.getElementById("signalAction").addEventListener("click", async () => {
+      if (signalingStep === "offer-ready") {
+        setSignalPanel("waiting-answer", "Paste their answer. Both of you must enter and compare each other’s friend code before the request is sent.");
+        signalText.focus();
+        return;
+      }
+      if (signalingStep === "waiting-answer") return receiveAnswer();
+      if (signalingStep === "joining-offer") return receiveOffer();
+      if (signalingStep === "answer-ready") closeConnectionDialog(true);
+    });
+    document.getElementById("copySignal").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(signalText.value);
+        showToast("Connection data copied.");
+      } catch (error) {
+        signalText.focus();
+        signalText.select();
+        showToast("Clipboard access blocked. Connection data selected; copy it manually.");
+      }
+    });
+    document.getElementById("cancelConnection").addEventListener("click", closeConnectionDialog);
+    connectionBackdrop.addEventListener("click", (event) => { if (event.target === connectionBackdrop) closeConnectionDialog(); });
+    document.getElementById("displayNameInput").addEventListener("change", updateProfileName);
+    document.getElementById("myCodeButton").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(appState.identity.inviteCode);
+        showToast("Your friend code was copied. Share it through a channel you trust.");
+      } catch (error) {
+        showToast(`Your friend code: ${appState.identity.inviteCode}`);
+      }
+    });
+    document.getElementById("editProfileNameButton").addEventListener("click", () => showModal({
+      title: "Edit your name",
+      description: "",
+      label: "Name",
+      placeholder: "Name",
+      confirm: "Save",
+      initialValue: appState.identity.name,
+      action: (name) => {
+        document.getElementById("displayNameInput").value = name;
+        updateProfileName();
+      }
+    }));
+    document.getElementById("editNameButton").addEventListener("click", () => {
+      document.getElementById("editProfileNameButton").click();
+    });
+    document.getElementById("avatarButton").addEventListener("click", () => {
+      document.getElementById("avatarFileInput").click();
+    });
+    document.getElementById("avatarFileInput").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      event.target.value = "";
+      if (!file) return;
+      if (!file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) {
+        showToast("Choose an image smaller than 10 MB.");
+        return;
+      }
+      try {
+        const bitmap = await createImageBitmap(file);
+        const canvas = document.createElement("canvas");
+        canvas.width = 96;
+        canvas.height = 96;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Could not process that image.");
+        const size = Math.min(bitmap.width, bitmap.height);
+        context.drawImage(
+          bitmap,
+          (bitmap.width - size) / 2,
+          (bitmap.height - size) / 2,
+          size,
+          size,
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        );
+        bitmap.close();
+        let quality = 0.8;
+        let avatar = canvas.toDataURL("image/jpeg", quality);
+        while (avatar.length > 6000 && quality > 0.35) {
+          quality -= 0.1;
+          avatar = canvas.toDataURL("image/jpeg", quality);
+        }
+        if (!isValidAvatar(avatar)) throw new Error("That image could not be compressed small enough.");
+        appState.identity.avatar = avatar;
+        updateIdentityDisplay();
+        refreshOwnMessageProfiles();
+        if (saveState()) publishProfileUpdate();
+        showToast("Profile picture updated.");
+      } catch (error) {
+        showToast(error.message || "Could not use that image.");
+      }
+    });
+    document.getElementById("regenerateCodeButton").addEventListener("click", () => {
+      if (!window.confirm("Create a new invite code? Your friends and chat history will stay unchanged.")) return;
+      appState.identity.inviteCode = createFriendCode([appState.identity.code, appState.identity.inviteCode]);
+      updateIdentityDisplay();
+      if (saveState()) publishProfileUpdate();
+      showToast("New invite code created.");
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        if (!connectionBackdrop.hidden) closeConnectionDialog();
+        if (!modalBackdrop.hidden) closeModal();
+        if (!profileBackdrop.hidden) closeProfileDialog();
+      }
+    });
+
+    updateIdentityDisplay();
+    saveState();
+    renderPeople();
+    renderRequests();
+    renderRoomConversation(activeRoom);
+    connectRoomServer();
+  </script>
+</body>
+</html>
