@@ -109,6 +109,10 @@ Contributions are welcome. Open an issue to discuss a substantial change before 
 
 OpenChat is an independent, experimental project. It is not affiliated with AOL or Signal. The interface takes broad inspiration from classic desktop instant messengers; no third-party product code or artwork is included.
 
+## Support
+
+If OpenChat is useful to you, consider starring the repository or contributing feedback and improvements.
+
 ## License
 
 OpenChat is available under the MIT License. See [LICENSE](LICENSE).

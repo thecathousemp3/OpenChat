@@ -41,7 +41,7 @@
     <rect x="111" y="126" width="43" height="43" rx="12" fill="url(#button)" stroke="#555"/>
     <text x="132.5" y="154" fill="#fff" text-anchor="middle" font-family="Tahoma,Arial,sans-serif" font-size="15" font-weight="700">MR</text>
     <text x="166" y="143" fill="#f4f4f4" font-family="Tahoma,Arial,sans-serif" font-size="14" font-weight="700">Morgan Reed</text>
-    <text x="166" y="162" fill="#b8b8b8" font-family="Tahoma,Arial,sans-serif" font-size="11">OC-DEMO-1234-5678</text>
+    <text x="166" y="162" fill="#b8b8b8" font-family="Tahoma,Arial,sans-serif" font-size="11">Profile stored on this device</text>
     <text x="110" y="210" fill="#aaa" font-family="Tahoma,Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="1.5">CHATS</text>
     <rect x="105" y="222" width="232" height="43" rx="4" fill="url(#button)" stroke="#555"/>
     <rect x="118" y="235" width="18" height="18" rx="5" fill="#555"/>
