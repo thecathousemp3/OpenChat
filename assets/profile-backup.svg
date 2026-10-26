@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="540" viewBox="0 0 1200 540" role="img" aria-labelledby="title description">
+  <title id="title">OpenChat local profile and encrypted backup</title>
+  <desc id="description">The active profile and recent conversations stay in unencrypted browser storage. Saving a backup encrypts an export with a password using PBKDF2 and AES-256-GCM before creating a file.</desc>
+  <defs>
+    <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#202020"/><stop offset="1" stop-color="#101010"/></linearGradient>
+    <linearGradient id="card" x2="0" y2="1"><stop stop-color="#303030"/><stop offset="1" stop-color="#1d1d1d"/></linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0l10 5-10 5z" fill="#ddd"/></marker>
+  </defs>
+  <rect width="1200" height="540" rx="18" fill="url(#bg)"/>
+  <text x="54" y="64" fill="#fff" font-family="Arial,sans-serif" font-size="27" font-weight="700">Your live profile and your backup are different</text>
+  <text x="54" y="94" fill="#bbb" font-family="Arial,sans-serif" font-size="15">The password protects the exported file, not the browser data you use every day.</text>
+  <rect x="64" y="162" width="310" height="208" rx="14" fill="url(#card)" stroke="#666"/>
+  <text x="219" y="199" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" font-weight="700">This browser</text>
+  <rect x="143" y="220" width="152" height="105" rx="7" fill="#101010" stroke="#aaa" stroke-width="2"/>
+  <path d="M130 335h178m-110 0 10 13h34l10-13" stroke="#ddd" stroke-width="3" fill="none"/>
+  <text x="219" y="256" fill="#eee" text-anchor="middle" font-family="Arial,sans-serif" font-size="14">Profile + recent chats</text>
+  <text x="219" y="283" fill="#bbb" text-anchor="middle" font-family="Arial,sans-serif" font-size="14">Browser local storage</text>
+  <text x="219" y="351" fill="#f2b6b6" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700">Not encrypted at rest</text>
+  <path d="M400 267h124" stroke="#ddd" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="462" y="246" fill="#bbb" text-anchor="middle" font-family="Arial,sans-serif" font-size="13">Save profile</text>
+  <rect x="554" y="162" width="280" height="208" rx="14" fill="url(#card)" stroke="#666"/>
+  <text x="694" y="199" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" font-weight="700">Encrypt in browser</text>
+  <path d="M664 243v-15a30 30 0 0 1 60 0v15m-69 0h78v64h-78z" fill="none" stroke="#eee" stroke-width="4"/>
+  <circle cx="694" cy="270" r="6" fill="#eee"/>
+  <path d="M694 276v13" stroke="#eee" stroke-width="4"/>
+  <text x="694" y="333" fill="#ccc" text-anchor="middle" font-family="Arial,sans-serif" font-size="14">Password-derived key</text>
+  <text x="694" y="354" fill="#ccc" text-anchor="middle" font-family="Arial,sans-serif" font-size="13">PBKDF2 + AES-256-GCM</text>
+  <path d="M860 267h94" stroke="#ddd" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="976" y="162" width="164" height="208" rx="14" fill="url(#card)" stroke="#666"/>
+  <path d="M1032 206h53l28 28v95h-81z" fill="#171717" stroke="#ddd" stroke-width="2"/>
+  <path d="M1085 206v30h28" fill="none" stroke="#ddd" stroke-width="2"/>
+  <text x="1073" y="267" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700">.openchat</text>
+  <text x="1058" y="344" fill="#ccc" text-anchor="middle" font-family="Arial,sans-serif" font-size="13">Encrypted file</text>
+  <text x="600" y="424" fill="#ccc" text-anchor="middle" font-family="Arial,sans-serif" font-size="15">The password is never sent to the server. OpenChat cannot recover a lost password.</text>
+  <text x="600" y="456" fill="#aaa" text-anchor="middle" font-family="Arial,sans-serif" font-size="14">Keep the backup file and its password safe and separately.</text>
+  <text x="600" y="503" fill="#999" text-anchor="middle" font-family="Arial,sans-serif" font-size="13">Restore replaces the profile in the browser where you restore it; it does not sync devices.</text>
+</svg>

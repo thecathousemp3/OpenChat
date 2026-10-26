@@ -12,6 +12,8 @@ test("inline app script parses and all static DOM references exist", () => {
   assert.match(html, /About WebRTC and privacy/);
   assert.match(html, /DTLS/);
   assert.match(html, /not cryptographically verified/);
+  assert.match(html, /\.window-dots\s*\{\s*display:\s*flex;\s*flex:\s*0 0 auto;/);
+  assert.match(html, /@media \(max-width:\s*360px\)[\s\S]*?\.titlebar-brand > span:last-child\s*\{\s*display:\s*none;/);
 
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((entry) => entry[1]);
   const duplicates = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];

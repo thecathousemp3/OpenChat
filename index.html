@@ -64,7 +64,9 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 12px;
+      gap: 8px;
+      min-width: 0;
+      padding: 0 10px;
       color: #fff;
       background: linear-gradient(180deg, #585858 0%, #393939 18%, #252525 55%, #181818 100%);
       border-bottom: 1px solid #080808;
@@ -73,10 +75,11 @@
       font-size: 11px;
       letter-spacing: .04em;
     }
-    .titlebar-brand { display: flex; align-items: center; gap: 7px; font-weight: 700; }
-    .titlebar-mark { display: grid; width: 16px; height: 16px; place-items: center; border: 1px solid #ddd; border-radius: 4px; color: #fff; font-size: 10px; font-weight: 700; }
-    .window-dots { display: flex; gap: 3px; }
-    .window-dots span { width: 15px; height: 13px; border: 1px solid #ccc; border-radius: 2px; color: #fff; background: linear-gradient(180deg, #777, #444); box-shadow: inset 0 1px #ffffff70; text-align: center; line-height: 10px; font-size: 10px; }
+    .titlebar-brand { display: flex; align-items: center; gap: 7px; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: 700; }
+    .titlebar-brand > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .titlebar-mark { display: grid; width: 16px; height: 16px; flex: 0 0 16px; place-items: center; border: 1px solid #ddd; border-radius: 4px; color: #fff; font-size: 10px; font-weight: 700; }
+    .window-dots { display: flex; flex: 0 0 auto; gap: 3px; }
+    .window-dots span { width: 15px; height: 13px; flex: 0 0 15px; border: 1px solid #ccc; border-radius: 2px; color: #fff; background: linear-gradient(180deg, #777, #444); box-shadow: inset 0 1px #ffffff70; text-align: center; line-height: 10px; font-size: 10px; }
     .window-dots span:nth-child(1)::before { content: "−"; }
     .window-dots span:nth-child(2)::before { content: "□"; font-size: 8px; }
     .window-dots span:nth-child(3)::before { content: "×"; }
@@ -335,6 +338,10 @@
       .room-icon { width: 32px; height: 32px; }
       .chat-heading h1 { font-size: 12px; }
       .chat-heading p { font-size: 9px; }
+    }
+    @media (max-width: 360px) {
+      .titlebar { padding-right: 8px; padding-left: 8px; }
+      .titlebar-brand > span:last-child { display: none; }
     }
     @media (max-height: 600px) {
       .app-shell { height: calc(100vh - 24px); margin: 0 auto; }
