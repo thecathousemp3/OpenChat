@@ -73,7 +73,15 @@ test.before(async () => {
   port = await findFreePort();
   child = spawn(process.execPath, [path.join(root, "server.js")], {
     cwd: root,
-    env: { ...process.env, HOST: "127.0.0.1", PORT: String(port) },
+    env: {
+      ...process.env,
+      HOST: "127.0.0.1",
+      PORT: String(port),
+      ICE_SERVERS_JSON: JSON.stringify([
+        { urls: "stun:stun.example.org:3478" },
+        { urls: "turn:turn.example.org:3478?transport=udp", username: "test-user", credential: "test-credential" }
+      ])
+    },
     stdio: "ignore"
   });
   await waitForServer();
@@ -91,6 +99,21 @@ test("health endpoint and app assets are served", async () => {
   const health = await fetch(`http://127.0.0.1:${port}/healthz`);
   assert.equal(health.status, 200);
   assert.equal(await health.text(), "ok");
+
+  const config = await fetch(`http://127.0.0.1:${port}/config.json`);
+  assert.equal(config.status, 200);
+  assert.match(config.headers.get("content-type"), /^application\/json/);
+  assert.equal(config.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await config.json(), {
+    iceServers: [
+      { urls: ["stun:stun.example.org:3478"] },
+      {
+        urls: ["turn:turn.example.org:3478?transport=udp"],
+        username: "test-user",
+        credential: "test-credential"
+      }
+    ]
+  });
 
   const page = await fetch(`http://127.0.0.1:${port}/`);
   assert.equal(page.status, 200);
