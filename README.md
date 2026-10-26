@@ -62,6 +62,23 @@ $env:PORT = "8080"
 npm start
 ```
 
+### Configure WebRTC connectivity
+
+By default, OpenChat uses no STUN or TURN servers. You can provide ICE servers to every browser connected to your instance with `ICE_SERVERS_JSON`:
+
+```sh
+ICE_SERVERS_JSON='[{"urls":"stun:stun.example.org:3478"},{"urls":"turn:turn.example.org:3478?transport=udp","username":"temporary-user","credential":"temporary-password"}]' npm start
+```
+
+PowerShell:
+
+```powershell
+$env:ICE_SERVERS_JSON = '[{"urls":"stun:stun.example.org:3478"},{"urls":"turn:turn.example.org:3478?transport=udp","username":"temporary-user","credential":"temporary-password"}]'
+npm start
+```
+
+The value must be a JSON array of ICE server objects. Each object has `urls` (a URL string or array); TURN entries also require `username` and `credential`. STUN can help peers discover reachable network addresses; TURN can relay encrypted WebRTC traffic when direct connections fail. Use a TURN provider you trust and short-lived credentials: the configuration, including TURN credentials, is delivered to browsers and is visible to users of your instance. The credentials are not a secret from those users. ICE servers can improve connectivity but do not guarantee a connection.
+
 Run the test suite with `npm test`.
 
 ## A first tour
@@ -110,13 +127,13 @@ Direct messages also travel over a WebRTC data channel protected in transit with
 
 ### Why WebRTC might not connect
 
-WebRTC needs a path through the networks between the browsers. OpenChat currently configures **no STUN or TURN servers**:
+WebRTC needs a path through the networks between the browsers. OpenChat ships with **no STUN or TURN servers configured**. The instance operator can configure them using [`ICE_SERVERS_JSON`](#configure-webrtc-connectivity):
 
 - **STUN** can help a browser discover a network address that peers may be able to reach.
 - **TURN** can relay traffic when a direct path is blocked. A TURN relay would carry encrypted transport data, but it adds an infrastructure operator and network dependency.
 - Without either service, NATs, firewalls, VPNs, or browser network policies can prevent peers from connecting.
 
-The app reports connection status and does not silently fall back to sending room message text through the server. WebRTC may also expose network address information to peers or infrastructure involved in connection setup; consider this when deciding whether to use it.
+The app reports connection status and retries ICE negotiation for shared-room peer connections after a connection failure. Direct-message signaling is manual, so a failed direct connection requires exchanging a new offer and answer. The app does not silently fall back to sending room message text through the server. WebRTC may also expose network address information to peers or infrastructure involved in connection setup; consider this when deciding whether to use it.
 
 ## Local data and backup boundaries
 
@@ -129,7 +146,7 @@ The password-protected export is encrypted, but encryption applies to the export
 ## Architecture
 
 - **`index.html`** contains the interface, local profile and conversation storage, profile export encryption, direct WebRTC setup, and room peer connections.
-- **`server.js`** serves the page and handles room discovery, membership, profile metadata, and room WebRTC offer/answer signaling. It does not relay shared-room message bodies.
+- **`server.js`** serves the page and ICE server configuration, and handles room discovery, membership, profile metadata, and room WebRTC offer/answer signaling. It does not relay shared-room message bodies.
 - **`ws`** provides the WebSocket server. The browser uses built-in Web APIs for WebRTC, Web Crypto, and local storage.
 - **No user database:** room names and membership are kept in server memory; profile and conversation state are kept separately in each browser profile.
 
@@ -150,7 +167,7 @@ OpenChat is an early-stage project and has not had an independent security revie
 - **No cryptographic identity verification:** friend codes and profile details can be spoofed. A malicious or compromised signaling server could interfere with connection setup.
 - **Unencrypted device storage:** active browser data is stored locally without encryption. Only exported profile files are encrypted.
 - **No offline delivery:** messages are not queued for disconnected peers.
-- **No configured STUN/TURN:** some network configurations cannot establish a peer connection.
+- **Optional STUN/TURN:** the server operator can configure ICE servers, but those services add infrastructure and privacy considerations; some network configurations may still fail to connect.
 - **No moderation or access control:** anyone who can reach the server can join available rooms or create rooms. There are no accounts, room permissions, abuse reports, or admin console.
 - **Network information:** WebRTC can expose network addresses to peers or infrastructure involved in connection establishment.
 

@@ -504,7 +504,7 @@
       <h2 id="aboutConnectionTitle">About WebRTC and privacy</h2>
       <p>Shared-room messages travel directly between browsers over WebRTC data channels. Browsers use DTLS to encrypt data in transit, and room message text is not relayed through the OpenChat server.</p>
       <p>The server still handles room membership and relays peer connection offers and answers. It also receives display names, profile pictures, and invite codes. Peer identity is not cryptographically verified; a malicious or compromised signaling server could interfere with connection setup. OpenChat has not had an independent security review.</p>
-      <p>Rooms connect each participant directly to every other participant, with no fixed participant cap. The number of peer connections grows quickly as rooms grow, and large rooms may overwhelm devices or networks. No STUN or TURN servers are configured, so some network setups cannot connect. WebRTC can disclose network addresses to other participants and signaling infrastructure.</p>
+      <p>Rooms connect each participant directly to every other participant, with no fixed participant cap. The number of peer connections grows quickly as rooms grow, and large rooms may overwhelm devices or networks. The server operator may configure STUN or TURN servers; without them, some network setups cannot connect. Shared-room peer connections retry ICE negotiation after a failure. WebRTC can disclose network addresses to other participants and infrastructure involved in connection setup.</p>
       <p>Direct messages also use WebRTC. The offer and answer must be copied between contacts manually, and friend codes should be compared using a separate trusted channel.</p>
       <p>Messages cached by this browser are stored in local storage without encryption. For sensitive conversations, use an independently reviewed messaging application.</p>
       <div class="modal-actions"><button id="closeAboutConnection" type="button">Close</button></div>
@@ -523,6 +523,8 @@
     const connectionChoices = document.getElementById("connectionChoices");
     const toast = document.getElementById("toast");
     const peers = new Map();
+    const iceServers = [];
+    let iceServersReady = Promise.resolve();
     let toastTimer;
     let activeRoom = "Global Chat";
     let activePeerId = null;
@@ -1086,6 +1088,7 @@
     function closeRoomMesh() {
       for (const peer of roomPeers.values()) {
         peer.intentionalClose = true;
+        clearTimeout(peer.restartTimer);
         peer.channel?.close();
         peer.connection.close();
       }
@@ -1175,9 +1178,13 @@
       const peer = {
         ...member,
         room: joinedRoom,
-        connection: new RTCPeerConnection({ iceServers: [] }),
+        connection: new RTCPeerConnection({ iceServers }),
         channel: null,
-        intentionalClose: false
+        intentionalClose: false,
+        restartAttempts: 0,
+        restartTimer: null,
+        restartInProgress: false,
+        restartFailureReported: false
       };
       roomPeers.set(peer.id, peer);
       peer.connection.ondatachannel = (event) => {
@@ -1189,16 +1196,98 @@
       };
       peer.connection.onconnectionstatechange = () => {
         updateRoomStatus();
-        if (peer.connection.connectionState === "failed" && !peer.intentionalClose) {
-          showToast(`Could not connect directly to ${peer.name}. Their network may block peer-to-peer connections.`);
+        if (peer.intentionalClose) return;
+        if (peer.connection.connectionState === "connected") {
+          peer.restartAttempts = 0;
+          peer.restartFailureReported = false;
+          clearTimeout(peer.restartTimer);
+          peer.restartTimer = null;
+          return;
         }
-        if (peer.connection.connectionState === "closed" && !peer.intentionalClose) {
+        if (peer.connection.connectionState === "failed") {
+          scheduleRoomIceRestart(peer);
+        } else if (peer.connection.connectionState === "disconnected") {
+          scheduleRoomIceRestart(peer, 5000);
+        } else if (peer.connection.connectionState === "closed") {
           roomPeers.delete(peer.id);
           updateRoomStatus();
         }
       };
       if (shouldInitiateRoomPeer(peer)) void createRoomOffer(peer);
       updateRoomStatus();
+    }
+
+    function scheduleRoomIceRestart(peer, delay = 0) {
+      if (
+        peer.intentionalClose ||
+        !shouldInitiateRoomPeer(peer) ||
+        peer.restartFailureReported ||
+        peer.restartTimer ||
+        peer.restartInProgress
+      ) return;
+      if (peer.restartAttempts >= 3) {
+        showToast(`Could not reconnect to ${peer.name}. They may need to leave and rejoin the room.`);
+        return;
+      }
+      peer.restartTimer = setTimeout(() => {
+        peer.restartTimer = null;
+        void restartRoomIce(peer);
+      }, delay);
+    }
+
+    async function restartRoomIce(peer) {
+      if (
+        peer.intentionalClose ||
+        roomPeers.get(peer.id) !== peer ||
+        !roomJoined ||
+        peer.connection.connectionState === "connected"
+      ) return;
+      if (peer.connection.signalingState !== "stable") {
+        scheduleRoomIceRestart(peer, 1000);
+        return;
+      }
+
+      peer.restartInProgress = true;
+      peer.restartAttempts += 1;
+      try {
+        const offer = await peer.connection.createOffer({ iceRestart: true });
+        await peer.connection.setLocalDescription(offer);
+        await waitForIceGathering(peer.connection);
+        if (roomPeers.get(peer.id) === peer && !peer.intentionalClose) {
+          await sendRoomSignal(peer, peer.connection.localDescription);
+        }
+      } catch (error) {
+        if (roomPeers.get(peer.id) === peer && !peer.intentionalClose) {
+          showToast(error.message || `Could not reconnect to ${peer.name}.`);
+        }
+      } finally {
+        peer.restartInProgress = false;
+        if (
+          roomPeers.get(peer.id) === peer &&
+          !peer.intentionalClose &&
+          peer.connection.connectionState !== "connected" &&
+          peer.restartAttempts < 3
+        ) {
+          scheduleRoomIceRestart(peer, 10000);
+        } else if (
+          roomPeers.get(peer.id) === peer &&
+          !peer.intentionalClose &&
+          peer.connection.connectionState !== "connected" &&
+          peer.restartAttempts >= 3
+        ) {
+          peer.restartTimer = setTimeout(() => {
+            peer.restartTimer = null;
+            if (
+              roomPeers.get(peer.id) === peer &&
+              peer.connection.connectionState !== "connected" &&
+              !peer.intentionalClose
+            ) {
+              peer.restartFailureReported = true;
+              showToast(`Could not reconnect to ${peer.name}. They may need to leave and rejoin the room.`);
+            }
+          }, 10000);
+        }
+      }
     }
 
     async function sendRoomSignal(peer, description) {
@@ -1246,7 +1335,7 @@
       if (!peer) return;
       try {
         if (payload.signal.type === "offer") {
-          if (shouldInitiateRoomPeer(peer) || peer.connection.remoteDescription) return;
+          if (shouldInitiateRoomPeer(peer) || peer.connection.signalingState !== "stable") return;
           await peer.connection.setRemoteDescription(payload.signal);
           const answer = await peer.connection.createAnswer();
           await peer.connection.setLocalDescription(answer);
@@ -1345,6 +1434,7 @@
         const peer = roomPeers.get(payload.peerId);
         if (peer) {
           peer.intentionalClose = true;
+          clearTimeout(peer.restartTimer);
           roomPeers.delete(payload.peerId);
           peer.channel?.close();
           peer.connection.close();
@@ -1577,7 +1667,7 @@
 
     function createPeerConnection(expectedCode) {
       if (!("RTCPeerConnection" in window)) throw new Error("This browser does not support WebRTC peer connections.");
-      const connection = new RTCPeerConnection({ iceServers: [] });
+      const connection = new RTCPeerConnection({ iceServers });
       const peer = {
         id: crypto.randomUUID(),
         connection,
@@ -1659,6 +1749,7 @@
 
     async function createInvite() {
       try {
+        await iceServersReady;
         connectionCommitted = false;
         updateProfileName();
         const expectedCode = normalizeFriendCode(document.getElementById("friendCodeInput").value);
@@ -1690,6 +1781,7 @@
 
     async function receiveOffer() {
       try {
+        await iceServersReady;
         connectionCommitted = false;
         const expectedCode = normalizeFriendCode(document.getElementById("friendCodeInput").value);
         if (!expectedCode) {
@@ -2064,7 +2156,23 @@
     renderPeople();
     renderRequests();
     renderRoomConversation(activeRoom);
-    connectRoomServer();
+    if (location.protocol !== "file:") {
+      iceServersReady = fetch("/config.json", { cache: "no-store" })
+        .then((response) => {
+          if (!response.ok) throw new Error(`Network configuration request failed (${response.status}).`);
+          return response.json();
+        })
+        .then((configuration) => {
+          if (!Array.isArray(configuration.iceServers)) throw new Error("Network configuration is invalid.");
+          iceServers.splice(0, iceServers.length, ...configuration.iceServers);
+        })
+        .catch((error) => {
+          showToast(`Could not load network configuration. Continuing without configured ICE servers. ${error.message}`);
+        })
+        .finally(connectRoomServer);
+    } else {
+      connectRoomServer();
+    }
   </script>
 </body>
 </html>
