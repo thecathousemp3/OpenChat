@@ -25,6 +25,8 @@ OpenChat gives you a familiar buddy-list-and-chat-window experience without a ho
 - **Global Chat and rooms:** room members connect to one another with WebRTC data channels. Global Chat is the only room present when a server starts; users can create other rooms.
 - **Direct messages:** friends exchange a connection offer and answer out of band, then chat over a browser-to-browser data channel.
 - **Friend requests:** connect with a friend code, check the code through a trusted channel, then accept or ignore the request.
+- **Delivery feedback:** messages show per-peer delivery acknowledgements; undelivered messages can be retried without re-sending to peers that acknowledged them.
+- **Local conversation tools:** search the messages cached on this device and reply to a message with a quoted excerpt.
 - **Personal profiles:** choose a display name and picture. Profile information is sent to connected friends and room members.
 - **Portable encrypted backup:** export your local profile, friends, requests, and cached messages to a password-protected `.openchat` file.
 - **Connection status:** see whether this instance is reachable and how many live members are in each room.
@@ -37,7 +39,11 @@ OpenChat gives you a familiar buddy-list-and-chat-window experience without a ho
 
 - Node.js 22 or later
 - npm
-- A modern browser with WebRTC and Web Crypto support
+- A supported browser with WebRTC, Web Crypto, and local storage support
+
+### Browser support
+
+OpenChat targets current stable desktop Chrome, Edge, Firefox, and Safari. Chromium is exercised in the automated browser integration test; the other browsers are best-effort targets and should be tested before relying on a deployment. Mobile browsers may work but are not currently covered by automated tests. Use an up-to-date browser; WebRTC and Web Crypto behavior, and available network paths, vary by browser and environment.
 
 ### Quick start by device
 
@@ -86,14 +92,22 @@ $env:HOST = "::"
 npm start
 ```
 
-Configure STUN and TURN servers with the `ICE_SERVERS` environment variable containing a JSON array. For example:
+### Configure WebRTC connectivity
+
+By default, OpenChat uses no STUN or TURN servers. Configure ICE servers for every browser connected to your instance with `ICE_SERVERS_JSON`:
+
+```sh
+ICE_SERVERS_JSON='[{"urls":"stun:stun.example.org:3478"},{"urls":"turn:turn.example.org:3478?transport=udp","username":"temporary-user","credential":"temporary-password"}]' npm start
+```
+
+PowerShell:
 
 ```powershell
-$env:ICE_SERVERS = '[{"urls":["stun:stun.example.net:3478"]},{"urls":["turn:turn.example.net:3478?transport=udp"],"username":"temporary-user","credential":"temporary-password"}]'
+$env:ICE_SERVERS_JSON = '[{"urls":"stun:stun.example.org:3478"},{"urls":"turn:turn.example.org:3478?transport=udp","username":"temporary-user","credential":"temporary-password"}]'
 npm start
 ```
 
-STUN may help peers discover reachable addresses; TURN can relay traffic when direct paths are blocked, but requires a reachable TURN service and valid credentials. ICE configuration is sent to browsers, so do not put long-lived TURN secrets here; use time-limited credentials from your TURN provider. Without configuration, OpenChat uses no STUN/TURN servers and some network combinations will fail.
+The value must be a JSON array of ICE server objects. Each object has `urls` (a URL string or array); TURN entries also require `username` and `credential`. STUN can help peers discover reachable network addresses; TURN can relay encrypted WebRTC traffic when direct connections fail. Use a TURN provider you trust and short-lived credentials: the configuration, including TURN credentials, is delivered to browsers and is visible to users of your instance. The credentials are not a secret from those users. ICE servers can improve connectivity but do not guarantee a connection.
 
 Run the test suite with `npm test`.
 
@@ -105,9 +119,11 @@ Every new server starts with one room: **Global Chat**. The room list and member
 
 The room list displays current member counts, and the status bar and Settings report whether the configured server is connected or reconnecting. This is visibility into the single server instance you opened; OpenChat does not discover or monitor unrelated servers.
 
-Room chat is a direct mesh: each browser creates a separate WebRTC data channel to every other currently connected member. The room server tells members who is present and helps browsers exchange connection offers and answers. It does not receive room message text. The app waits until a channel to every listed participant is open before sending a room message; messages are not queued for offline members.
+Room chat is a direct mesh: each browser creates a separate WebRTC data channel to every other currently connected member. The room server tells members who is present and helps browsers exchange connection offers and answers. It does not receive room message text. A message is sent to currently open peer channels; OpenChat shows which peers acknowledged it and lets you retry unacknowledged recipients. Messages are not queued for offline members, and older clients that do not acknowledge messages may leave the delivery status waiting.
 
 Rooms have **no fixed participant cap**. Each browser connects directly to every other room member, so the full mesh grows quadratically: a room with *n* people needs *n × (n − 1) ÷ 2* peer connections overall. OpenChat will accept larger rooms, but browsers and networks have practical capacity limits; very large rooms may become slow or fail to connect. The [room mesh diagram](assets/room-mesh.svg) shows how the connection count grows.
+
+Search applies only to the conversation history cached in the current browser profile. Replies store a quoted excerpt locally and send that excerpt with the reply; there is no server-side search, synchronized history, or offline delivery. The server has no accounts, room permissions, or moderation tools, so any reachable visitor can join a room. Since participant identities are not authenticated, OpenChat does not currently assign trusted room moderators.
 
 ### Add a friend and start a direct chat
 
@@ -145,13 +161,19 @@ Direct messages also travel over a WebRTC data channel protected in transit with
 
 ### Why WebRTC might not connect
 
-WebRTC needs a path through the networks between the browsers. The operator can configure STUN and TURN servers with `ICE_SERVERS`:
+WebRTC needs a path through the networks between the browsers. OpenChat ships with **no STUN or TURN servers configured**. The instance operator can configure them using [`ICE_SERVERS_JSON`](#configure-webrtc-connectivity):
 
 - **STUN** can help a browser discover a network address that peers may be able to reach.
 - **TURN** can relay traffic when a direct path is blocked. A TURN relay would carry encrypted transport data, but it adds an infrastructure operator and network dependency.
 - Without either service, NATs, firewalls, VPNs, or browser network policies can prevent peers from connecting.
 
-The app reports connection status and does not silently fall back to sending room message text through the server. WebRTC may also expose network address information to peers or infrastructure involved in connection setup; consider this when deciding whether to use it.
+The app reports connection status and retries ICE negotiation for shared-room peer connections after a connection failure. Direct-message signaling is manual, so a failed direct connection requires exchanging a new offer and answer. The app does not silently fall back to sending room message text through the server. WebRTC may also expose network address information to peers or infrastructure involved in connection setup; consider this when deciding whether to use it.
+
+### Voice/video and end-to-end security
+
+Voice and video calling are not implemented yet. WebRTC media uses DTLS-SRTP transport encryption, but OpenChat does not cryptographically authenticate peer identities or protect signaling with an identity-key protocol. Therefore, transport encryption alone is not a verified end-to-end encryption guarantee against a malicious signaling service. Voice/video and stronger authenticated end-to-end security need a separate threat model, protocol and key-verification design, and independent security review before implementation or security claims.
+
+See the [voice/video security design](CALLS_SECURITY_DESIGN.md) for the threat model and implementation gates. It defines no protocol yet; a mature, reviewed approach and independent security review are prerequisites.
 
 ## Local data and backup boundaries
 
@@ -165,8 +187,11 @@ The password-protected export is encrypted, but encryption applies to the export
 
 - **`index.html`** contains the interface, local profile and conversation storage, profile export encryption, direct WebRTC setup, and room peer connections.
 - **`server.js`** serves the page and WebRTC configuration, and handles room discovery, membership, profile metadata, and room offer/answer signaling. It does not relay shared-room message bodies. It pings WebSocket clients every 30 seconds and removes clients that miss a heartbeat.
+- **`index.html`** contains the interface, local profile and conversation storage, profile export encryption, local conversation search/replies, delivery acknowledgements, direct WebRTC setup, and room peer connections.
+- **`server.js`** serves the page and ICE server configuration, and handles room discovery, membership, profile metadata, and room WebRTC offer/answer signaling. It does not relay shared-room message bodies. It pings WebSocket clients every 30 seconds and removes clients that miss a heartbeat.
 - **`ws`** provides the WebSocket server. The browser uses built-in Web APIs for WebRTC, Web Crypto, and local storage.
 - **No user database:** room names and membership are kept in server memory; profile and conversation state are kept separately in each browser profile.
+- **Browser integration tests:** the Node test suite launches Chromium and verifies a two-browser shared-room delivery, reply, local-search, and persistence flow.
 
 ### Why a peer mesh is for small groups
 
@@ -185,7 +210,7 @@ OpenChat is an early-stage project and has not had an independent security revie
 - **No cryptographic identity verification:** friend codes and profile details can be spoofed. A malicious or compromised signaling server could interfere with connection setup.
 - **Unencrypted device storage:** active browser data is stored locally without encryption. Only exported profile files are encrypted.
 - **No offline delivery:** messages are not queued for disconnected peers.
-- **Configurable STUN/TURN:** an operator can provide ICE servers, but connectivity still depends on those services, firewall policy, and network conditions.
+- **Optional STUN/TURN:** the server operator can configure ICE servers, but those services add infrastructure and privacy considerations; some network configurations may still fail to connect.
 - **No moderation or access control:** anyone who can reach the server can join available rooms or create rooms. There are no accounts, room permissions, abuse reports, or admin console.
 - **Browser data:** profile, contacts, and conversation history are stored in the browser's unencrypted local storage. Settings can clear OpenChat's local data; export a profile first if you may want to restore it.
 - **Signaling rate limit:** each WebSocket connection is limited to 40 requests per 10-second window; an over-limit connection is closed. This is per connection, not a global or per-IP abuse limit.
@@ -206,10 +231,13 @@ The server checks that a WebSocket `Origin` matches its `Host`, but this is **no
 There is no build step. The CI workflow checks JavaScript syntax, runs the server integration tests, and audits production dependencies.
 
 ```sh
+npx playwright install chromium
 npm test
 node --check server.js
 npm audit --omit=dev
 ```
+
+The test command runs Node integration tests and a Chromium test with two browser contexts. CI installs Chromium automatically.
 
 Contributions are welcome. Open an issue to discuss a substantial change before starting work, and include reproduction steps and relevant environment details in bug reports. Do not post real invite codes, profile backups, passwords, or message contents.
 

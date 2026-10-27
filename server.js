@@ -10,13 +10,61 @@ const heartbeatIntervalMs = Number(process.env.WS_HEARTBEAT_INTERVAL_MS || 30000
 if (!Number.isSafeInteger(heartbeatIntervalMs) || heartbeatIntervalMs < 100 || heartbeatIntervalMs > 300000) {
   throw new Error("WS_HEARTBEAT_INTERVAL_MS must be an integer between 100 and 300000.");
 }
-const iceServers = parseIceServers(process.env.ICE_SERVERS);
+const iceServers = parseIceServers(process.env.ICE_SERVERS_JSON);
 const rooms = new Map([["Global Chat", new Set()]]);
 const roomNames = new Map([["global chat", "Global Chat"]]);
 const staticAssets = new Map([
   ["/assets/favicon.svg", { file: "assets/favicon.svg", contentType: "image/svg+xml" }],
   ["/assets/openchat-preview.svg", { file: "assets/openchat-preview.svg", contentType: "image/svg+xml" }]
 ]);
+
+function parseIceServers(value) {
+  if (!value) return [];
+
+  let servers;
+  try {
+    servers = JSON.parse(value);
+  } catch {
+    throw new Error("ICE_SERVERS_JSON must contain a valid JSON array.");
+  }
+  if (!Array.isArray(servers) || servers.length > 20) {
+    throw new Error("ICE_SERVERS_JSON must be an array containing at most 20 ICE servers.");
+  }
+
+  return servers.map((server, index) => {
+    if (
+      !server ||
+      typeof server !== "object" ||
+      Array.isArray(server) ||
+      Object.keys(server).some((key) => !["urls", "username", "credential"].includes(key))
+    ) {
+      throw new Error(`ICE_SERVERS_JSON entry ${index + 1} must contain only urls, username, and credential.`);
+    }
+
+    const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+    if (
+      !urls.length ||
+      urls.length > 10 ||
+      urls.some((url) => typeof url !== "string" || url.length > 2048 || !/^(stun|stuns|turn|turns):\S+$/i.test(url))
+    ) {
+      throw new Error(`ICE_SERVERS_JSON entry ${index + 1} has an invalid urls value.`);
+    }
+
+    const hasUsername = Object.hasOwn(server, "username");
+    const hasCredential = Object.hasOwn(server, "credential");
+    if (
+      hasUsername !== hasCredential ||
+      (hasUsername && (typeof server.username !== "string" || !server.username || typeof server.credential !== "string" || !server.credential)) ||
+      (urls.some((url) => /^turns?:/i.test(url)) && !hasUsername)
+    ) {
+      throw new Error(`ICE_SERVERS_JSON entry ${index + 1} requires both username and credential for TURN servers.`);
+    }
+
+    return hasUsername
+      ? { urls, username: server.username, credential: server.credential }
+      : { urls };
+  });
+}
 
 function send(socket, payload) {
   if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(payload));
@@ -36,34 +84,6 @@ function broadcastRoomList() {
 
 function reportError(socket, message) {
   send(socket, { type: "error", message });
-}
-
-function parseIceServers(value) {
-  if (!value) return [];
-  let servers;
-  try {
-    servers = JSON.parse(value);
-  } catch (error) {
-    throw new Error(`ICE_SERVERS must contain valid JSON: ${error.message}`);
-  }
-  if (!Array.isArray(servers) || servers.length > 10) {
-    throw new Error("ICE_SERVERS must be an array containing no more than 10 ICE server entries.");
-  }
-  for (const server of servers) {
-    const urls = Array.isArray(server?.urls) ? server.urls : [server?.urls];
-    if (
-      !server ||
-      typeof server !== "object" ||
-      urls.length === 0 ||
-      urls.length > 10 ||
-      urls.some((url) => typeof url !== "string" || url.length > 2048 || !/^(stun|stuns|turn|turns):/i.test(url)) ||
-      (server.username !== undefined && (typeof server.username !== "string" || server.username.length > 512)) ||
-      (server.credential !== undefined && (typeof server.credential !== "string" || server.credential.length > 512))
-    ) {
-      throw new Error("ICE_SERVERS contains an invalid entry. Each entry needs valid STUN or TURN URLs and optional string credentials.");
-    }
-  }
-  return servers;
 }
 
 function validRoomName(value) {

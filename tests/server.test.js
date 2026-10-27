@@ -90,7 +90,7 @@ test.before(async () => {
       ...process.env,
       HOST: "127.0.0.1",
       PORT: String(port),
-      ICE_SERVERS: JSON.stringify(testIceServers),
+      ICE_SERVERS_JSON: JSON.stringify(testIceServers),
       WS_HEARTBEAT_INTERVAL_MS: "100"
     },
     stdio: "ignore"
@@ -112,6 +112,8 @@ test("health endpoint and app assets are served", async () => {
   assert.equal(await health.text(), "ok");
   const config = await fetch(`http://127.0.0.1:${port}/config.json`);
   assert.equal(config.status, 200);
+  assert.match(config.headers.get("content-type"), /^application\/json/);
+  assert.equal(config.headers.get("cache-control"), "no-store");
   assert.deepEqual(await config.json(), { iceServers: testIceServers });
 
   const page = await fetch(`http://127.0.0.1:${port}/`);
