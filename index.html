@@ -196,7 +196,8 @@
       font-size: 11px;
       cursor: pointer;
     }
-    .sidebar-icon { min-width: 12px; color: #ccc; font-size: 13px; text-align: center; }
+    .sidebar-icon { display: grid; width: 16px; min-width: 16px; height: 16px; place-items: center; color: #ccc; }
+    .sidebar-icon svg { display: block; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
     .sidebar-action:hover { border-color: #999; color: #fff; background: linear-gradient(180deg, #454545, #303030); }
 
     .chat-panel { display: grid; grid-template-rows: 69px minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
@@ -343,7 +344,7 @@
       .nav-button, .contact-button { width: 43px; height: 41px; justify-content: center; padding: 0; }
       .contact-avatar { width: 31px; height: 31px; }
       .sidebar-actions { width: 100%; justify-items: center; }
-      .profile-actions { width: 100%; justify-items: center; }
+      .profile-actions { width: 100%; grid-template-columns: 1fr; justify-items: center; }
       .profile-actions .sidebar-action { width: 43px; }
       .sidebar-action { width: 43px; height: 37px; padding: 0; font-size: 14px; }
       .chat-header { padding: 0 12px; }
@@ -432,15 +433,15 @@
         <div class="section-label" id="requestsHeading" hidden>Friend requests</div>
         <div class="request-list" id="requestList"></div>
         <div class="sidebar-actions">
-          <button class="sidebar-action" id="connectPeerButton" type="button" aria-label="Add a friend" title="Add a friend"><span class="sidebar-icon" aria-hidden="true">+</span><span>Add a friend</span></button>
-          <button class="sidebar-action" id="createRoomButton" type="button" aria-label="Create a room" title="Create a room"><span class="sidebar-icon" aria-hidden="true">#</span><span>Create a room</span></button>
+          <button class="sidebar-action" id="connectPeerButton" type="button" aria-label="Add a friend" title="Add a friend"><span class="sidebar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="4"></circle><path d="M2 21v-2a6 6 0 0 1 6-6h2a6 6 0 0 1 4 1.5"></path><path d="M19 8v6m-3-3h6"></path></svg></span><span>Add a friend</span></button>
+          <button class="sidebar-action" id="createRoomButton" type="button" aria-label="Create a room" title="Create a room"><span class="sidebar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"></path><path d="M12.5 8v6m-3-3h6"></path></svg></span><span>Create a room</span></button>
           <div class="profile-actions">
-            <button class="sidebar-action" id="saveProfileButton" type="button" aria-label="Save encrypted profile" title="Save encrypted profile"><span class="sidebar-icon" aria-hidden="true">S</span><span>Save profile</span></button>
-            <button class="sidebar-action" id="restoreProfileButton" type="button" aria-label="Restore profile" title="Restore profile"><span class="sidebar-icon" aria-hidden="true">R</span><span>Restore</span></button>
-            <button class="sidebar-action" id="editNameButton" type="button" aria-label="Edit profile name" title="Edit profile name"><span class="sidebar-icon" aria-hidden="true">E</span><span>Edit name</span></button>
-            <button class="sidebar-action" id="regenerateCodeButton" type="button" aria-label="Generate new invite code" title="Generate new invite code"><span class="sidebar-icon" aria-hidden="true">N</span><span>New invite code</span></button>
+            <button class="sidebar-action" id="saveProfileButton" type="button" aria-label="Save encrypted profile" title="Save encrypted profile"><span class="sidebar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h16"></path><path d="M12 16V4m-5 5 5-5 5 5"></path></svg></span><span>Save profile</span></button>
+            <button class="sidebar-action" id="restoreProfileButton" type="button" aria-label="Restore profile" title="Restore profile"><span class="sidebar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h16"></path><path d="M12 4v12m-5-5 5 5 5-5"></path></svg></span><span>Restore</span></button>
+            <button class="sidebar-action" id="editNameButton" type="button" aria-label="Edit profile name" title="Edit profile name"><span class="sidebar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m4 16.5-.8 4.3 4.3-.8L20 7.5 16.5 4 4 16.5Z"></path><path d="m14.5 6 3.5 3.5"></path></svg></span><span>Edit name</span></button>
+            <button class="sidebar-action" id="regenerateCodeButton" type="button" aria-label="Generate new invite code" title="Generate new invite code"><span class="sidebar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 7v5h-5"></path><path d="M4.7 9a7.5 7.5 0 0 1 12.7-2L20 12"></path><path d="M4 17v-5h5"></path><path d="M19.3 15a7.5 7.5 0 0 1-12.7 2L4 12"></path></svg></span><span>New invite code</span></button>
           </div>
-          <button class="sidebar-action" id="settingsButton" type="button" aria-label="Settings" title="Settings" aria-haspopup="dialog" aria-controls="settingsBackdrop"><span class="sidebar-icon" aria-hidden="true">S</span><span>Settings</span></button>
+          <button class="sidebar-action" id="settingsButton" type="button" aria-label="Settings" title="Settings" aria-haspopup="dialog" aria-controls="settingsBackdrop"><span class="sidebar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"></path><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.5.9l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.5-.9l-1.7.7-1.4-2.4 1.4-1.1a7 7 0 0 1 0-1.8l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.5-.9l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.5.9l1.7-.7 1.4 2.4-1.4 1.1a7 7 0 0 1 0 1.8Z"></path></svg></span><span>Settings</span></button>
           <input id="profileFileInput" type="file" accept=".openchat,application/json" hidden>
           <input id="avatarFileInput" type="file" accept="image/*" hidden>
         </div>

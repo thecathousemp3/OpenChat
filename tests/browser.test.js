@@ -79,6 +79,28 @@ test("two browsers deliver, reply to, search, and retain room messages", { timeo
     ]);
 
     await first.setViewportSize({ width: 390, height: 844 });
+    for (const [id, label] of [
+      ["connectPeerButton", "Add a friend"],
+      ["createRoomButton", "Create a room"],
+      ["saveProfileButton", "Save encrypted profile"],
+      ["restoreProfileButton", "Restore profile"],
+      ["editNameButton", "Edit profile name"],
+      ["regenerateCodeButton", "Generate new invite code"],
+      ["settingsButton", "Settings"]
+    ]) {
+      const action = first.locator(`#${id}`);
+      assert.equal(await action.getAttribute("aria-label"), label);
+      assert.equal(await action.locator(".sidebar-icon svg").count(), 1);
+    }
+    const sidebarActionOverflow = await first.evaluate(() => {
+      const sidebar = document.querySelector(".sidebar").getBoundingClientRect();
+      const chatPanel = document.querySelector(".chat-panel").getBoundingClientRect();
+      return [...document.querySelectorAll(".sidebar-action")].some((button) => {
+        const bounds = button.getBoundingClientRect();
+        return bounds.left < sidebar.left || bounds.right > chatPanel.left;
+      });
+    });
+    assert.equal(sidebarActionOverflow, false);
     try {
       await Promise.all([
         first.locator("#connectionLabel").getByText(/WebRTC 1\/1 connected/).waitFor({ timeout: 30000 }),
