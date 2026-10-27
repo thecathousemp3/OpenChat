@@ -54,7 +54,7 @@ async function openDemoPage(browser, port, name, code, messages = []) {
   await page.addInitScript((state) => {
     localStorage.setItem("openchat.device.v1", JSON.stringify(state));
   }, demoState(name, code, messages));
-  await page.goto(`http://127.0.0.1:${port}/`);
+  await page.goto(`http://127.0.0.1:${port}/app`);
   return { context, page };
 }
 

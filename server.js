@@ -16,6 +16,8 @@ const roomNames = new Map([["global chat", "Global Chat"]]);
 const staticAssets = new Map([
   ["/assets/favicon.svg", { file: "assets/favicon.svg", contentType: "image/svg+xml" }],
   ["/assets/openchat-preview.svg", { file: "assets/openchat-preview.svg", contentType: "image/svg+xml" }],
+  ["/assets/openchat-desktop-v2.png", { file: "assets/openchat-desktop-v2.png", contentType: "image/png" }],
+  ["/assets/openchat-mobile-v2.png", { file: "assets/openchat-mobile-v2.png", contentType: "image/png" }],
   ["/assets/message-path.svg", { file: "assets/message-path.svg", contentType: "image/svg+xml" }],
   ["/assets/room-mesh.svg", { file: "assets/room-mesh.svg", contentType: "image/svg+xml" }]
 ]);

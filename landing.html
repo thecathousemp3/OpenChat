@@ -70,6 +70,11 @@
     .kicker { margin: 0 0 11px; color: var(--lime); font-size: 10px; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
     h2 { margin: 0; font-size: clamp(28px, 4vw, 43px); letter-spacing: -.045em; line-height: 1.12; }
     .section-intro { max-width: 590px; margin: 13px 0 0; color: var(--muted); font-size: 14px; line-height: 1.75; }
+    .mobile-showcase { display: grid; grid-template-columns: 1fr minmax(200px, 290px); align-items: center; gap: 48px; padding: 30px; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(135deg, #171717, #0d0d0d); }
+    .mobile-showcase .section-head { margin: 0; }
+    .mobile-shot { width: min(100%, 280px); margin: 0 auto; padding: 7px; border: 1px solid #ffffff22; border-radius: 16px; background: #080808; box-shadow: 0 24px 60px #0009; }
+    .mobile-shot img { display: block; width: 100%; height: auto; border-radius: 9px; }
+    .mobile-shot figcaption { padding: 10px 5px 3px; color: var(--muted); font-size: 10px; line-height: 1.5; }
     .diagram-panel { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: #090909; }
     .diagram-panel img { display: block; width: 100%; height: auto; }
     .diagram-caption { display: flex; justify-content: space-between; gap: 18px; padding: 14px 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; line-height: 1.6; }
@@ -121,6 +126,7 @@
       .feature-grid { grid-template-columns: repeat(2, 1fr); }
       .network { grid-template-columns: 1fr; gap: 19px; }
       .mesh-panel { grid-template-columns: 1fr; }
+      .mobile-showcase { gap: 25px; padding: 24px; }
     }
     @media (max-width: 560px) {
       .wrap { width: min(100% - 32px, 1120px); }
@@ -138,6 +144,8 @@
       .section { padding: 66px 0; }
       .feature-grid { grid-template-columns: 1fr; }
       .feature { min-height: 0; }
+      .mobile-showcase { grid-template-columns: 1fr; gap: 24px; padding: 21px; }
+      .mobile-shot { width: min(100%, 260px); }
       .setup-grid { grid-template-columns: 1fr; }
       .setup-step { min-height: 0; }
       .mesh-panel { padding: 17px; }
@@ -148,6 +156,12 @@
       .privacy-band { grid-template-columns: 1fr; padding: 24px 19px; }
       .privacy-band .button { justify-self: start; }
       .footer { align-items: flex-start; flex-direction: column; }
+    }
+    @media (max-width: 360px) {
+      .topnav a:not(.button) { display: none; }
+      .topnav { gap: 0; }
+      .topnav .button { padding: 0 8px; }
+      .brand { gap: 7px; font-size: 13px; }
     }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
@@ -183,7 +197,7 @@
       </div>
       <div class="visual" aria-label="Illustrated preview of the OpenChat messenger">
         <div class="visual-glow" aria-hidden="true"></div>
-        <div class="preview-frame"><img src="assets/openchat-preview.svg" alt="OpenChat desktop-style chat interface preview"></div>
+        <div class="preview-frame"><img src="assets/openchat-desktop-v2.png" alt="Current OpenChat desktop interface with a room conversation, connection status, and message composer"></div>
         <div class="floating-tag"><span class="tag-icon" aria-hidden="true">P2P</span><span><strong>Peer-to-peer rooms</strong><small>WebRTC data channels</small></span></div>
       </div>
     </section>
@@ -194,6 +208,20 @@
       <span><b>No account</b> or phone number</span>
       <span><b>Encrypted</b> portable profile backups</span>
     </div>
+
+    <section class="wrap section" aria-labelledby="mobileShowcaseTitle">
+      <div class="mobile-showcase">
+        <div class="section-head">
+          <p class="kicker">The current interface</p>
+          <h2 id="mobileShowcaseTitle">One chat, from desktop to phone.</h2>
+          <p class="section-intro">These captures come from the running app and show the current monochrome interface at desktop and mobile sizes.</p>
+        </div>
+        <figure class="mobile-shot">
+          <img src="assets/openchat-mobile-v2.png" alt="Current OpenChat mobile interface with a room conversation, compact sidebar, and message composer">
+          <figcaption>OpenChat at a narrow mobile viewport.</figcaption>
+        </figure>
+      </div>
+    </section>
 
     <section class="wrap section" id="features" aria-labelledby="featuresTitle">
       <div class="section-head">

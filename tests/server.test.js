@@ -134,6 +134,13 @@ test("health endpoint and app assets are served", async () => {
     assert.match(response.headers.get("content-type"), /^image\/svg\+xml/);
     assert.match(await response.text(), /<svg/);
   }
+
+  for (const asset of ["openchat-desktop-v2.png", "openchat-mobile-v2.png"]) {
+    const response = await fetch(`http://127.0.0.1:${port}/assets/${asset}`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /^image\/png/);
+    assert.ok((await response.arrayBuffer()).byteLength > 0);
+  }
 });
 
 test("new server starts with Global Chat and relays WebRTC signaling, not room messages", async () => {

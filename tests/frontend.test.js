@@ -25,6 +25,8 @@ test("inline app script parses and all static DOM references exist", () => {
   assert.doesNotMatch(landingHtml, /[^\x00-\x7F]/, "the landing page should use plain text, not decorative Unicode symbols");
   assert.match(landingHtml, /Browsers carry the conversation/);
   assert.match(landingHtml, /Bring up a room in three steps/);
+  assert.match(landingHtml, /assets\/openchat-desktop-v2\.png/);
+  assert.match(landingHtml, /assets\/openchat-mobile-v2\.png/);
   assert.match(landingHtml, /assets\/message-path\.svg/);
   assert.match(landingHtml, /assets\/room-mesh\.svg/);
   assert.equal([...match[1].matchAll(/new RTCPeerConnection\(\{ iceServers \}\)/g)].length, 2);
