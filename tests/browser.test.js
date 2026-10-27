@@ -78,6 +78,7 @@ test("two browsers deliver, reply to, search, and retain room messages", { timeo
       second.goto(`http://127.0.0.1:${port}/`)
     ]);
 
+    await first.setViewportSize({ width: 390, height: 844 });
     try {
       await Promise.all([
         first.locator("#connectionLabel").getByText(/WebRTC 1\/1 connected/).waitFor({ timeout: 30000 }),
@@ -87,7 +88,30 @@ test("two browsers deliver, reply to, search, and retain room messages", { timeo
       throw new Error(`${error.message}\nfirst status: ${await first.locator("#connectionLabel").textContent()}\nsecond status: ${await second.locator("#connectionLabel").textContent()}\nfirst toast: ${await first.locator("#toast").textContent()}\nsecond toast: ${await second.locator("#toast").textContent()}\npage errors: ${pageErrors.join("; ")}`);
     }
 
-    await first.locator("#messageInput").fill("Browser delivery check");
+    const settingsButton = first.getByRole("button", { name: "Settings" });
+    await settingsButton.click();
+    const copyCodeButton = first.getByRole("button", { name: "Copy your friend code" });
+    assert.equal(await copyCodeButton.count(), 1);
+    await first.keyboard.press("Shift+Tab");
+    assert.equal(await first.evaluate(() => document.activeElement.id), "copyInviteCodeButton");
+    await first.keyboard.press("Shift+Tab");
+    assert.equal(await first.evaluate(() => document.activeElement.id), "clearCacheButton");
+    await first.keyboard.press("Tab");
+    assert.equal(await first.evaluate(() => document.activeElement.id), "copyInviteCodeButton");
+    await copyCodeButton.click();
+    await first.locator("#toast").waitFor({ state: "visible" });
+    assert.match(await first.locator("#toast").textContent(), /friend code/i);
+    await first.keyboard.press("Escape");
+    assert.equal(await first.evaluate(() => document.activeElement.id), "settingsButton");
+    await first.getByRole("button", { name: /Global Chat, 2 participants/ }).waitFor();
+
+    await first.locator("#messageInput").fill("");
+    const plainTextMessage = "Browser delivery check <img src=x onerror=alert(1)> https://example.test";
+    await first.locator("#messageInput").fill(plainTextMessage);
+    await second.locator("#typingIndicator").getByText(/is typing/).waitFor();
+    await first.locator("#messageInput").fill("");
+    await second.locator("#typingIndicator").waitFor({ state: "hidden" });
+    await first.locator("#messageInput").fill(plainTextMessage);
     await first.locator("#messageForm button[type=submit]").click();
     await first.locator(".message-text", { hasText: "Browser delivery check" }).waitFor();
     try {
@@ -95,6 +119,9 @@ test("two browsers deliver, reply to, search, and retain room messages", { timeo
     } catch (error) {
       throw new Error(`${error.message}\nfirst status: ${await first.locator("#connectionLabel").textContent()}\nsecond status: ${await second.locator("#connectionLabel").textContent()}\nfirst toast: ${await first.locator("#toast").textContent()}\nsecond toast: ${await second.locator("#toast").textContent()}\npage errors: ${pageErrors.join("; ")}`);
     }
+    assert.equal(await first.locator(".message-text").first().textContent(), plainTextMessage);
+    assert.equal(await first.locator(".message-text a, .message-text img").count(), 0);
+    assert.equal(await second.locator(".message-text a, .message-text img").count(), 0);
     await first.locator(".delivery-status", { hasText: "waiting for delivery" }).waitFor();
     await first.locator(".message [data-retry-message]").click();
     assert.equal(await second.locator(".message-text", { hasText: "Browser delivery check" }).count(), 1);

@@ -4,12 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#111111">
-  <meta name="description" content="A self-hosted instant messenger with shared chat rooms, WebRTC direct messaging, and encrypted profile backups.">
+  <meta name="description" content="A self-hosted, text-only messenger. Browsers exchange room messages over WebRTC while a small Node.js server handles discovery and signaling.">
   <meta name="color-scheme" content="dark">
   <meta property="og:title" content="OpenChat | Self-hosted instant messenger">
-  <meta property="og:description" content="A desktop-inspired chat app with shared rooms, direct WebRTC messaging, and portable encrypted profile backups.">
+  <meta property="og:description" content="A self-hosted, text-only messenger. Browsers exchange room messages over WebRTC while a small Node.js server handles discovery and signaling.">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="https://raw.githubusercontent.com/thecathousemp3/OpenChat/main/assets/openchat-preview.svg">
+  <meta property="og:image" content="https://raw.githubusercontent.com/thecathousemp3/OpenChat/main/assets/openchat-desktop.png">
+  <meta property="og:image:alt" content="OpenChat's dark desktop chat interface with a connected Global Chat room and plain-text messages">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <title>OpenChat | Self-hosted instant messenger</title>
   <style>
@@ -274,6 +275,8 @@
     .reply-preview { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; padding: 7px 9px; border-left: 2px solid #888; color: #ccc; background: #ffffff0a; font-size: 10px; }
     .reply-preview[hidden] { display: none; }
     .reply-preview-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .typing-indicator { min-height: 14px; margin: 0 0 6px; color: var(--muted); font-size: 10px; }
+    .typing-indicator[hidden] { display: none; }
     .composer {
       display: flex;
       align-items: center;
@@ -317,6 +320,7 @@
     .modal-actions button { padding: 9px 13px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); font-size: 11px; cursor: pointer; }
     .modal-actions .primary { border-color: #888; color: #fff; background: linear-gradient(180deg, #555, #333); }
     .modal-actions .danger { border-color: #744; color: #fff; background: #482626; }
+    .settings-copy-code { width: 100%; margin: 0 0 16px; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); cursor: pointer; }
     .connection-choices { display: flex; flex-wrap: wrap; gap: 9px; }
     .connection-choices button { padding: 10px 13px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); font-size: 11px; cursor: pointer; }
     .connection-choices button.primary { border-color: #888; color: #fff; background: linear-gradient(180deg, #555, #333); }
@@ -428,15 +432,15 @@
         <div class="section-label" id="requestsHeading" hidden>Friend requests</div>
         <div class="request-list" id="requestList"></div>
         <div class="sidebar-actions">
-          <button class="sidebar-action" id="connectPeerButton" type="button"><span class="sidebar-icon" aria-hidden="true">+</span><span>Add a friend</span></button>
-          <button class="sidebar-action" id="createRoomButton" type="button"><span class="sidebar-icon" aria-hidden="true">#</span><span>Create a room</span></button>
+          <button class="sidebar-action" id="connectPeerButton" type="button" aria-label="Add a friend" title="Add a friend"><span class="sidebar-icon" aria-hidden="true">+</span><span>Add a friend</span></button>
+          <button class="sidebar-action" id="createRoomButton" type="button" aria-label="Create a room" title="Create a room"><span class="sidebar-icon" aria-hidden="true">#</span><span>Create a room</span></button>
           <div class="profile-actions">
             <button class="sidebar-action" id="saveProfileButton" type="button" aria-label="Save encrypted profile" title="Save encrypted profile"><span class="sidebar-icon" aria-hidden="true">S</span><span>Save profile</span></button>
             <button class="sidebar-action" id="restoreProfileButton" type="button" aria-label="Restore profile" title="Restore profile"><span class="sidebar-icon" aria-hidden="true">R</span><span>Restore</span></button>
             <button class="sidebar-action" id="editNameButton" type="button" aria-label="Edit profile name" title="Edit profile name"><span class="sidebar-icon" aria-hidden="true">E</span><span>Edit name</span></button>
             <button class="sidebar-action" id="regenerateCodeButton" type="button" aria-label="Generate new invite code" title="Generate new invite code"><span class="sidebar-icon" aria-hidden="true">N</span><span>New invite code</span></button>
           </div>
-          <button class="sidebar-action" id="settingsButton" type="button" aria-haspopup="dialog" aria-controls="settingsBackdrop"><span class="sidebar-icon" aria-hidden="true">S</span><span>Settings</span></button>
+          <button class="sidebar-action" id="settingsButton" type="button" aria-label="Settings" title="Settings" aria-haspopup="dialog" aria-controls="settingsBackdrop"><span class="sidebar-icon" aria-hidden="true">S</span><span>Settings</span></button>
           <input id="profileFileInput" type="file" accept=".openchat,application/json" hidden>
           <input id="avatarFileInput" type="file" accept="image/*" hidden>
         </div>
@@ -457,19 +461,21 @@
         <div class="conversation" id="conversation" aria-live="polite">
         </div>
         <div class="composer-wrap">
+          <div class="typing-indicator" id="typingIndicator" role="status" aria-live="polite" aria-atomic="true" hidden></div>
           <div class="reply-preview" id="replyPreview" hidden>
             <span class="reply-preview-text" id="replyPreviewText"></span>
             <button class="message-action" id="cancelReplyButton" type="button">Cancel reply</button>
           </div>
           <form class="composer" id="messageForm">
-            <input id="messageInput" type="text" maxlength="500" autocomplete="off" placeholder="Say something nice..." aria-label="Type a message">
+            <input id="messageInput" type="text" maxlength="500" autocomplete="off" placeholder="Text only (no links or images)..." aria-label="Type a plain-text message" aria-describedby="messageInputHelp">
+            <span class="visually-hidden" id="messageInputHelp">Messages are plain text. Links and images are not embedded.</span>
             <button class="send-button" type="submit" aria-label="Send message">➤</button>
           </form>
         </div>
       </section>
     </div>
     <footer class="statusbar">
-      <span class="statusbar-left"><span class="statusbar-dot" id="statusIndicator"></span><span id="connectionLabel"></span></span>
+      <span class="statusbar-left"><span class="statusbar-dot" id="statusIndicator" aria-hidden="true"></span><span id="connectionLabel" role="status" aria-live="polite" aria-atomic="true"></span></span>
     </footer>
   </main>
 
@@ -547,6 +553,7 @@
       <p id="settingsServerStatus">Checking this server…</p>
       <p id="settingsRoomStatus">Room occupancy will appear when connected.</p>
       <p>Profile, contacts, and conversation history are stored in this browser’s local storage without encryption. Clearing OpenChat data removes them from this browser; export a profile first if you may want to restore it. This does not clear unrelated browser data or exported profile files.</p>
+      <button class="settings-copy-code" id="copyInviteCodeButton" type="button">Copy your friend code</button>
       <div class="modal-actions">
         <button id="closeSettings" type="button">Close</button>
         <button class="danger" id="clearCacheButton" type="button">Clear cache and local data</button>
@@ -594,6 +601,143 @@
     let sharedRooms = ["Global Chat"];
     let activeView = "room";
     let pendingReply = null;
+    let dialogReturnFocus = null;
+    let localRoomTyping = false;
+    let lastRoomTypingSentAt = 0;
+    let localRoomTypingTimer = null;
+    const roomTypingPeers = new Map();
+    const dialogFocusableSelector = [
+      "a[href]",
+      "button:not([disabled])",
+      "input:not([disabled]):not([type='hidden'])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
+      "[tabindex]:not([tabindex='-1'])"
+    ].join(",");
+
+    function currentDialogBackdrop() {
+      return [...document.querySelectorAll(".modal-backdrop")].reverse()
+        .find((backdrop) => !backdrop.hidden) || null;
+    }
+
+    function dialogFocusables(backdrop) {
+      return [...backdrop.querySelectorAll(dialogFocusableSelector)]
+        .filter((element) => element.getClientRects().length > 0);
+    }
+
+    function openDialog(backdrop, initialFocus) {
+      if (!currentDialogBackdrop()) dialogReturnFocus = document.activeElement;
+      backdrop.hidden = false;
+      const target = initialFocus || dialogFocusables(backdrop)[0];
+      target?.focus();
+    }
+
+    function closeDialog(backdrop) {
+      backdrop.hidden = true;
+      if (currentDialogBackdrop()) return;
+      const returnFocus = dialogReturnFocus;
+      dialogReturnFocus = null;
+      if (returnFocus?.isConnected && !returnFocus.disabled) returnFocus.focus();
+    }
+
+    function trapDialogTab(event) {
+      const backdrop = currentDialogBackdrop();
+      if (!backdrop) return;
+      const focusables = dialogFocusables(backdrop);
+      if (!focusables.length) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !backdrop.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !backdrop.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    function renderTypingIndicator() {
+      const indicator = document.getElementById("typingIndicator");
+      const peersTyping = [...roomTypingPeers.values()].map(({ peer }) => peer.name);
+      if (activeView !== "room" || peersTyping.length === 0) {
+        indicator.hidden = true;
+        indicator.textContent = "";
+        return;
+      }
+      indicator.hidden = false;
+      indicator.textContent = peersTyping.length === 1
+        ? `${peersTyping[0]} is typing…`
+        : peersTyping.length === 2
+          ? `${peersTyping[0]} and ${peersTyping[1]} are typing…`
+          : "Several people are typing…";
+    }
+
+    function clearRoomPeerTyping(peerId) {
+      const typingPeer = roomTypingPeers.get(peerId);
+      if (typingPeer) clearTimeout(typingPeer.timeout);
+      roomTypingPeers.delete(peerId);
+      renderTypingIndicator();
+    }
+
+    function clearRoomTyping() {
+      for (const { timeout } of roomTypingPeers.values()) clearTimeout(timeout);
+      roomTypingPeers.clear();
+      renderTypingIndicator();
+    }
+
+    function updateRoomPeerTyping(peer, active) {
+      if (peer.room !== joinedRoom || activeView !== "room") return;
+      clearRoomPeerTyping(peer.id);
+      if (!active) return;
+      const typingPeer = {
+        peer,
+        timeout: setTimeout(() => {
+          roomTypingPeers.delete(peer.id);
+          renderTypingIndicator();
+        }, 5000)
+      };
+      roomTypingPeers.set(peer.id, typingPeer);
+      renderTypingIndicator();
+    }
+
+    function sendRoomTyping(active) {
+      if (!roomJoined || activeView !== "room" || !joinedRoom) return;
+      const payload = JSON.stringify({ type: "typing", room: joinedRoom, active });
+      for (const peer of roomPeers.values()) {
+        if (peer.room !== joinedRoom || peer.channel?.readyState !== "open") continue;
+        try {
+          peer.channel.send(payload);
+        } catch (error) {
+          showToast(`Could not update typing status for ${peer.name}: ${error.message}`);
+        }
+      }
+    }
+
+    function stopLocalRoomTyping() {
+      clearTimeout(localRoomTypingTimer);
+      localRoomTypingTimer = null;
+      if (!localRoomTyping) return;
+      localRoomTyping = false;
+      sendRoomTyping(false);
+    }
+
+    function updateLocalRoomTyping() {
+      if (activeView !== "room" || !document.getElementById("messageInput").value.trim()) {
+        stopLocalRoomTyping();
+        return;
+      }
+      const now = Date.now();
+      if (!localRoomTyping || now - lastRoomTypingSentAt >= 2000) {
+        sendRoomTyping(true);
+        localRoomTyping = true;
+        lastRoomTypingSentAt = now;
+      }
+      clearTimeout(localRoomTypingTimer);
+      localRoomTypingTimer = setTimeout(stopLocalRoomTyping, 2500);
+    }
 
     function createFriendCode(excludedCodes = []) {
       const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -867,12 +1011,11 @@
       document.getElementById("profileConfirmWrap").hidden = !isExport;
       document.getElementById("profilePasswordConfirm").required = isExport;
       document.getElementById("confirmProfile").textContent = isExport ? "Save file" : "Restore profile";
-      profileBackdrop.hidden = false;
-      document.getElementById("profilePassword").focus();
+      openDialog(profileBackdrop, document.getElementById("profilePassword"));
     }
 
     function closeProfileDialog() {
-      profileBackdrop.hidden = true;
+      closeDialog(profileBackdrop);
       document.getElementById("profileForm").reset();
       profileAction = null;
       profileImportFile = null;
@@ -933,12 +1076,11 @@
       modalInput.placeholder = placeholder;
       modalInput.value = initialValue;
       modalAction = action;
-      modalBackdrop.hidden = false;
-      modalInput.focus();
+      openDialog(modalBackdrop, modalInput);
     }
 
     function closeModal() {
-      modalBackdrop.hidden = true;
+      closeDialog(modalBackdrop);
       modalAction = null;
     }
 
@@ -1099,6 +1241,8 @@
       const button = createElement("button", "contact-button");
       button.type = "button";
       button.dataset.peerCode = person.code;
+      button.setAttribute("aria-label", `${person.name}, ${detail}`);
+      button.title = `${person.name} · ${detail}`;
       const avatar = createElement("span", "contact-avatar");
       setAvatar(avatar, person.avatar, person.name.trim().slice(0, 1).toUpperCase() || "?");
       button.append(avatar);
@@ -1188,6 +1332,7 @@
     }
 
     function closeRoomMesh() {
+      stopLocalRoomTyping();
       for (const peer of roomPeers.values()) {
         markPeerDeliveriesFailed(peer.code);
         peer.intentionalClose = true;
@@ -1199,6 +1344,7 @@
       roomMembers.clear();
       joinedRoom = null;
       roomPeerId = null;
+      clearRoomTyping();
     }
 
     function joinActiveRoom() {
@@ -1252,6 +1398,8 @@
         button.type = "button";
         button.dataset.room = room;
         button.dataset.icon = "#";
+        button.setAttribute("aria-label", `${room}, ${roomCounts[room]} ${roomCounts[room] === 1 ? "participant" : "participants"}`);
+        button.title = `${room} · ${roomCounts[room]} ${roomCounts[room] === 1 ? "participant" : "participants"}`;
         button.append(
           createElement("span", "nav-icon", button.dataset.icon),
           createElement("span", "", room),
@@ -1531,6 +1679,12 @@
         if (payload?.type === "room-message" && payload.room === peer.room) {
           addRoomMessage(peer, payload);
         } else if (
+          payload?.type === "typing" &&
+          payload.room === peer.room &&
+          typeof payload.active === "boolean"
+        ) {
+          updateRoomPeerTyping(peer, payload.active);
+        } else if (
           payload?.type === "message-ack" &&
           typeof payload.id === "string" &&
           typeof payload.code === "string" &&
@@ -1540,6 +1694,7 @@
         }
       };
       channel.onclose = () => {
+        clearRoomPeerTyping(peer.id);
         markPeerDeliveriesFailed(peer.code);
         updateRoomStatus();
       };
@@ -1582,6 +1737,7 @@
         return;
       }
       if (payload.type === "room-peer-left" && payload.room === joinedRoom) {
+        clearRoomPeerTyping(payload.peerId);
         roomMembers.delete(payload.peerId);
         const peer = roomPeers.get(payload.peerId);
         if (peer) {
@@ -1660,6 +1816,8 @@
     }
 
     function selectPeer(peer) {
+      stopLocalRoomTyping();
+      clearRoomTyping();
       activeView = "peer";
       activePeerId = peer.id;
       setPendingReply(null);
@@ -2169,7 +2327,7 @@
     }
 
     function closeConnectionDialog(keepConnection = false) {
-      connectionBackdrop.hidden = true;
+      closeDialog(connectionBackdrop);
       if (keepConnection) connectionCommitted = true;
       if (pendingConnection && !connectionCommitted && pendingConnection.channel?.readyState !== "open") discardPendingConnection();
       else pendingConnection = null;
@@ -2186,7 +2344,7 @@
       document.getElementById("signalAction").disabled = false;
       document.getElementById("displayNameInput").value = appState.identity.name;
       document.getElementById("friendCodeInput").value = "";
-      connectionBackdrop.hidden = false;
+      openDialog(connectionBackdrop, document.getElementById("displayNameInput"));
     }
 
     document.getElementById("messageForm").addEventListener("submit", (event) => {
@@ -2248,6 +2406,7 @@
         saveState();
         renderRoomConversation(activeRoom);
         input.value = "";
+        stopLocalRoomTyping();
         setPendingReply(null);
         return;
       }
@@ -2279,9 +2438,11 @@
       }
       recordMessage(peer, message);
       input.value = "";
+      stopLocalRoomTyping();
       setPendingReply(null);
     });
 
+    document.getElementById("messageInput").addEventListener("input", updateLocalRoomTyping);
     messageSearch.addEventListener("input", renderActiveConversation);
     document.getElementById("cancelReplyButton").addEventListener("click", () => setPendingReply(null));
     conversation.addEventListener("click", (event) => {
@@ -2460,14 +2621,16 @@
     document.getElementById("cancelConnection").addEventListener("click", closeConnectionDialog);
     connectionBackdrop.addEventListener("click", (event) => { if (event.target === connectionBackdrop) closeConnectionDialog(); });
     document.getElementById("displayNameInput").addEventListener("change", updateProfileName);
-    document.getElementById("myCodeButton").addEventListener("click", async () => {
+    async function copyFriendCode() {
       try {
         await navigator.clipboard.writeText(appState.identity.inviteCode);
         showToast("Your friend code was copied. Share it through a channel you trust.");
       } catch (error) {
         showToast(`Your friend code: ${appState.identity.inviteCode}`);
       }
-    });
+    }
+    document.getElementById("myCodeButton").addEventListener("click", copyFriendCode);
+    document.getElementById("copyInviteCodeButton").addEventListener("click", copyFriendCode);
     document.getElementById("editProfileNameButton").addEventListener("click", () => showModal({
       title: "Edit your name",
       description: "",
@@ -2539,35 +2702,38 @@
     });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        if (!connectionBackdrop.hidden) closeConnectionDialog();
-        if (!modalBackdrop.hidden) closeModal();
-        if (!profileBackdrop.hidden) closeProfileDialog();
-        document.getElementById("aboutConnectionBackdrop").hidden = true;
-        document.getElementById("settingsBackdrop").hidden = true;
+        const backdrop = currentDialogBackdrop();
+        if (!backdrop) return;
+        event.preventDefault();
+        if (backdrop === connectionBackdrop) closeConnectionDialog();
+        else if (backdrop === modalBackdrop) closeModal();
+        else if (backdrop === profileBackdrop) closeProfileDialog();
+        else closeDialog(backdrop);
+        return;
       }
+      if (event.key === "Tab") trapDialogTab(event);
     });
     document.getElementById("aboutConnectionButton").addEventListener("click", () => {
-      document.getElementById("aboutConnectionBackdrop").hidden = false;
-      document.getElementById("closeAboutConnection").focus();
+      openDialog(
+        document.getElementById("aboutConnectionBackdrop"),
+        document.getElementById("closeAboutConnection")
+      );
     });
     document.getElementById("closeAboutConnection").addEventListener("click", () => {
-      document.getElementById("aboutConnectionBackdrop").hidden = true;
-      document.getElementById("aboutConnectionButton").focus();
+      closeDialog(document.getElementById("aboutConnectionBackdrop"));
+    });
+    document.getElementById("aboutConnectionBackdrop").addEventListener("click", (event) => {
+      if (event.target === event.currentTarget) closeDialog(event.currentTarget);
     });
     document.getElementById("settingsButton").addEventListener("click", () => {
       updateRoomStatus();
-      document.getElementById("settingsBackdrop").hidden = false;
-      document.getElementById("closeSettings").focus();
+      openDialog(document.getElementById("settingsBackdrop"), document.getElementById("closeSettings"));
     });
     document.getElementById("closeSettings").addEventListener("click", () => {
-      document.getElementById("settingsBackdrop").hidden = true;
-      document.getElementById("settingsButton").focus();
+      closeDialog(document.getElementById("settingsBackdrop"));
     });
     document.getElementById("settingsBackdrop").addEventListener("click", (event) => {
-      if (event.target === event.currentTarget) {
-        event.currentTarget.hidden = true;
-        document.getElementById("settingsButton").focus();
-      }
+      if (event.target === event.currentTarget) closeDialog(event.currentTarget);
     });
     document.getElementById("clearCacheButton").addEventListener("click", () => {
       if (!window.confirm("Clear this browser’s OpenChat profile, contacts, and conversation history? Export a profile first if you may want to restore this data.")) return;

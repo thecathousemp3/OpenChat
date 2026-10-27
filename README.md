@@ -1,8 +1,8 @@
 # OpenChat
 
-**A self-hosted instant messenger with a little early-2000s desktop nostalgia and a browser-to-browser chat architecture.**
+**A self-hosted, text-only messenger with a little early-2000s desktop nostalgia and a browser-to-browser chat architecture.**
 
-OpenChat gives you a familiar buddy-list-and-chat-window experience without a hosted account system. Run the small Node.js server yourself, connect through a browser, and use Global Chat, create a room, or exchange a direct-message invitation with a friend.
+Run a small Node.js signaling server on a computer you control, then open it in a current browser. Global Chat and custom rooms connect participants directly over WebRTC; the server coordinates discovery and connection setup but does not relay shared-room message bodies. Friends can establish direct-message channels by exchanging connection details out of band. There is no hosted account system, global server directory, or central message database.
 
 > **Experimental software:** OpenChat is not an independently reviewed secure-messaging product. Read [Security and privacy](#security-and-privacy) before using it, and do not use it for sensitive communications.
 
@@ -10,9 +10,13 @@ OpenChat gives you a familiar buddy-list-and-chat-window experience without a ho
 [![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
 [![Node.js 22 or later](https://img.shields.io/badge/Node.js-22%2B-555555.svg)](https://nodejs.org/)
 
-![OpenChat Global Chat interface preview](assets/openchat-preview.svg)
+![OpenChat desktop screenshot showing Global Chat, a room conversation, member count, and typing indicator](assets/openchat-desktop.png)
 
-*An illustrated preview of the interface. Names and messages are fictional; this is not a live conversation.*
+*Desktop capture of the running app with fictional sample profiles and messages; it is a product screenshot, not a live conversation.*
+
+![OpenChat mobile screenshot showing the responsive chat interface](assets/openchat-mobile.png)
+
+*The same interface at a narrow mobile viewport. Captures can be regenerated with `npm run capture:screenshots`.*
 
 ## Explore OpenChat
 
@@ -26,12 +30,34 @@ OpenChat gives you a familiar buddy-list-and-chat-window experience without a ho
 - **Direct messages:** friends exchange a connection offer and answer out of band, then chat over a browser-to-browser data channel.
 - **Friend requests:** connect with a friend code, check the code through a trusted channel, then accept or ignore the request.
 - **Delivery feedback:** messages show per-peer delivery acknowledgements; undelivered messages can be retried without re-sending to peers that acknowledged them.
+- **Plain-text chat:** message bodies are displayed as text only. Markup and URLs are not rendered as HTML, images, or clickable links.
+- **Typing status:** a compact, temporary indicator shows when room participants are typing. Typing notices travel over the existing peer-to-peer data channels and are not saved.
 - **Local conversation tools:** search the messages cached on this device and reply to a message with a quoted excerpt.
 - **Personal profiles:** choose a display name and picture. Profile information is sent to connected friends and room members.
 - **Portable encrypted backup:** export your local profile, friends, requests, and cached messages to a password-protected `.openchat` file.
 - **Connection status:** see whether this instance is reachable and how many live members are in each room.
 - **Browser data controls:** clear the OpenChat profile and conversation data stored by this browser from Settings.
 - **Self-hosted:** one small Node.js process serves the page and coordinates room membership and WebRTC signaling.
+
+## How it works—and why
+
+OpenChat separates **coordination** from **conversation**:
+
+1. A browser opens a WebSocket to the server instance chosen by the user and asks to join a room.
+2. The server keeps that instance's room membership in memory, returns the current members, and relays WebRTC connection offers and answers. It sees names, profile pictures, invite codes, and signaling metadata.
+3. Each pair of room members negotiates a WebRTC data channel. ICE tries available network paths; an operator may configure STUN and TURN servers when direct connectivity needs help.
+4. Message bodies, typing notices, and delivery acknowledgements travel over those peer data channels. The room server does not receive or forward message text.
+5. Each browser stores its own profile and recent conversation history. There is no server-side message history or offline queue.
+
+| Choice | Why it fits this project | Trade-off |
+| --- | --- | --- |
+| A small Node.js signaling server and browser-native APIs | One self-hosted process avoids a separate application service, user database, and compiled frontend. JavaScript handles the coordination workload; browsers provide WebSocket, WebRTC, Web Crypto, and local storage. | The operator still runs a reachable server for room discovery/signaling. Node.js is not a defense against all connection floods; public deployments need proxy-level connection and IP limits. |
+| WebRTC peer-to-peer room mesh | Message bodies go directly between participants instead of through a central room-message relay. This keeps the server's role smaller and matches the self-hosted model. | Every participant maintains a connection to every other participant. With *n* people, each browser handles *n − 1* connections and the room has *n × (n − 1) ÷ 2* connections overall. Rooms have no fixed participant cap, but device, browser, and network capacity still impose practical limits. |
+| Text-only, bounded message bodies | A 500-character plain-text message keeps chat focused and rendering simple. HTML is never interpreted, and URLs are not converted into links or previews, so chat content cannot embed active markup or images. | Images, file attachments, rich formatting, and clickable links are intentionally not part of a message. Profile pictures are separate profile metadata, not message content. |
+| Optional STUN/TURN instead of a bundled relay | Operators choose the network services appropriate for their deployment; no external ICE provider is silently selected by default. STUN can help discover paths, while TURN can relay transport when direct paths fail. | ICE settings are sent to browsers. TURN adds a service and trust boundary, and credentials should be short-lived. These options improve connectivity but cannot guarantee it. |
+| Local browser storage with an encrypted export | A self-hosted service does not need a central profile database. Users can export a password-protected backup and clear this origin's saved data from Settings. | Active local storage is not encrypted at rest, is tied to this browser, and is not synchronized. Exported backups are encrypted; losing their password means they cannot be restored. |
+
+These are deliberate scope choices, not claims that the system is unlimited or anonymous. There is no global directory: a room count and connection indicator describe only the instance currently open in that browser. Typing notices are short-lived room signals; they are not saved to message history, but current room peers can see them. WebRTC transport encryption protects data in transit, but OpenChat does not authenticate identities with a cryptographic end-to-end protocol; see [Security and privacy](#security-and-privacy).
 
 ## Get started
 
@@ -185,15 +211,13 @@ The password-protected export is encrypted, but encryption applies to the export
 
 ## Architecture
 
-- **`index.html`** contains the interface, local profile and conversation storage, profile export encryption, direct WebRTC setup, and room peer connections.
-- **`server.js`** serves the page and WebRTC configuration, and handles room discovery, membership, profile metadata, and room offer/answer signaling. It does not relay shared-room message bodies. It pings WebSocket clients every 30 seconds and removes clients that miss a heartbeat.
-- **`index.html`** contains the interface, local profile and conversation storage, profile export encryption, local conversation search/replies, delivery acknowledgements, direct WebRTC setup, and room peer connections.
-- **`server.js`** serves the page and ICE server configuration, and handles room discovery, membership, profile metadata, and room WebRTC offer/answer signaling. It does not relay shared-room message bodies. It pings WebSocket clients every 30 seconds and removes clients that miss a heartbeat.
+- **`index.html`** contains the interface, local profile and conversation storage, profile export encryption, local conversation search/replies, typing state, delivery acknowledgements, direct WebRTC setup, and room peer connections.
+- **`server.js`** serves the page and ICE server configuration, and handles room discovery, membership, profile metadata, WebSocket heartbeat cleanup, request limiting, and room WebRTC offer/answer signaling. It does not relay shared-room message bodies.
 - **`ws`** provides the WebSocket server. The browser uses built-in Web APIs for WebRTC, Web Crypto, and local storage.
 - **No user database:** room names and membership are kept in server memory; profile and conversation state are kept separately in each browser profile.
-- **Browser integration tests:** the Node test suite launches Chromium and verifies a two-browser shared-room delivery, reply, local-search, and persistence flow.
+- **Browser integration tests:** the Node test suite launches Chromium and verifies a two-browser shared-room delivery, typing indicators, plain-text rendering, reply, local-search, and persistence flow.
 
-### Why a peer mesh is for small groups
+### Why there is no fixed room cap—and the trade-off
 
 In a full mesh, every participant needs one connection to every other participant. With *n* members, that is *n × (n − 1) ÷ 2* peer connections across the room, and each participant maintains *n − 1* connections. This avoids routing message bodies through a central room server, but it uses more network and browser resources as a room grows. OpenChat imposes no fixed participant cap; actual capacity depends on each participant's browser, device, and network.
 
@@ -237,7 +261,11 @@ node --check server.js
 npm audit --omit=dev
 ```
 
-The test command runs Node integration tests and a Chromium test with two browser contexts. CI installs Chromium automatically.
+The test command runs Node integration tests and a Chromium test with two browser contexts. CI installs Chromium automatically. To regenerate the fictional desktop and mobile README screenshots using a local test server and Chromium:
+
+```sh
+npm run capture:screenshots
+```
 
 Contributions are welcome. Open an issue to discuss a substantial change before starting work, and include reproduction steps and relevant environment details in bug reports. Do not post real invite codes, profile backups, passwords, or message contents.
 

@@ -1,14 +1,25 @@
-# OpenChat update notes
+# OpenChat implementation notes
 
-Include these backend, browser, documentation, and landing-page changes in the next repository update:
+This note records the current engineering choices and user-facing updates. Keep the README, app metadata, security documentation, and screenshots aligned when these behaviors change.
 
-- Keep rooms uncapped; do not introduce a participant cap. Room mesh capacity remains limited by clients and networks.
-- Enforce the existing per-WebSocket request limit: 40 requests per 10-second window, then close that connection. This is not a per-IP or global connection-flood defense; public deployments still need reverse-proxy limits.
-- Add a 30-second WebSocket ping/pong heartbeat and remove unresponsive clients from room membership. Update room counts when membership changes.
-- Add optional `ICE_SERVERS_JSON` configuration for STUN/TURN. Warn that ICE configuration is public to connected browsers and TURN credentials should be short-lived.
-- Support IPv6 server binding with `HOST=::`; document DNS/firewall requirements. WebRTC gathers IPv6 candidates through browser ICE.
-- Show current instance connection/reconnect state and live member counts per room. This is not a directory or health monitor for unrelated OpenChat servers.
-- Add Settings → Clear cache and local data. It removes only the current origin's `openchat.device.v1` local-storage data; exported backups and unrelated browser data remain untouched. Recommend exporting before clearing.
-- Update the app's About/Settings text, README, and SECURITY.md alongside the backend changes.
+## Backend and connectivity
 
-Verification should include server/frontend tests, JavaScript syntax checks, heartbeat cleanup, configurable ICE delivery, rate-limit disconnect, room-count updates, IPv6 deployment documentation, and the cache-clear flow.
+- **Uncapped rooms:** the server does not enforce a fixed participant count. A browser maintains one WebRTC data channel per room peer, so actual capacity depends on device, browser, and network resources and degrades with full-mesh growth.
+- **Per-connection request protection:** each WebSocket is limited to 40 requests per 10-second window; an over-limit socket is closed. This bounds a single connection's signaling traffic but is not a global or per-IP connection-flood defense. Public operators should add reverse-proxy connection and IP limits.
+- **Dead connection cleanup:** the server sends a WebSocket ping every 30 seconds and removes clients that do not respond, updating the in-memory room counts.
+- **Configurable ICE:** `ICE_SERVERS_JSON` optionally supplies STUN/TURN entries. No provider is selected by default. Configuration is sent to browsers, so TURN credentials should be short-lived. ICE increases available connection paths but cannot guarantee connectivity.
+- **IPv6:** bind using `HOST=::`, publish an AAAA record, and allow the relevant firewall traffic. WebRTC candidate gathering remains browser/network dependent.
+- **Instance-local visibility:** connection status and room counts describe the configured instance only. OpenChat does not crawl or maintain a global server directory.
+
+## Browser behavior and data
+
+- **Plain-text messages:** message bodies are rendered as text; HTML is not interpreted and URLs are not converted into links, previews, or embedded images. Profile pictures remain separate profile metadata.
+- **Typing indicator:** a compact, expiring notice is exchanged through existing room data channels. It is not stored in history or relayed through the signaling server; connected room peers can see typing activity.
+- **Local data controls:** Settings can clear the current origin's `openchat.device.v1` local-storage data. It does not erase exported backup files or unrelated browser data. Export a profile first if it may be needed later.
+- **Accessible responsive controls:** narrow layouts retain descriptive names for icon-only buttons. Dialogs trap keyboard focus and restore focus on close; connection updates are announced to assistive technology. Settings also provides a friend-code copy action for mobile layouts.
+
+## Documentation, screenshots, and verification
+
+- The README explains the signaling/message paths, peer-mesh scaling, plain-text policy, ICE trade-offs, local-storage boundary, and why these constraints fit a self-hosted application.
+- `assets/openchat-desktop.png` and `assets/openchat-mobile.png` are generated from the running app with fictional sample profiles and messages. Regenerate them with `npm run capture:screenshots`; the script starts a local test server and launches Chromium.
+- Run `npm test` for Node and Chromium integration coverage, `node --check server.js` for server syntax, and `npm run capture:screenshots` when refreshing the README preview assets.
