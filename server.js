@@ -10,7 +10,9 @@ const rooms = new Map([["Global Chat", new Set()]]);
 const roomNames = new Map([["global chat", "Global Chat"]]);
 const staticAssets = new Map([
   ["/assets/favicon.svg", { file: "assets/favicon.svg", contentType: "image/svg+xml" }],
-  ["/assets/openchat-preview.svg", { file: "assets/openchat-preview.svg", contentType: "image/svg+xml" }]
+  ["/assets/openchat-preview.svg", { file: "assets/openchat-preview.svg", contentType: "image/svg+xml" }],
+  ["/assets/message-path.svg", { file: "assets/message-path.svg", contentType: "image/svg+xml" }],
+  ["/assets/room-mesh.svg", { file: "assets/room-mesh.svg", contentType: "image/svg+xml" }]
 ]);
 
 function send(socket, payload) {
@@ -87,16 +89,17 @@ const server = http.createServer((request, response) => {
     });
     return;
   }
-  if (request.method !== "GET" || (pathname !== "/" && pathname !== "/index.html")) {
+  if (request.method !== "GET" || (pathname !== "/" && pathname !== "/index.html" && pathname !== "/app")) {
     response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
     response.end("Not found");
     return;
   }
-  fs.readFile(path.join(__dirname, "index.html"), (error, html) => {
+  const page = pathname === "/" ? "landing.html" : "index.html";
+  fs.readFile(path.join(__dirname, page), (error, html) => {
     if (error) {
-      console.error("Could not read index.html:", error);
+      console.error(`Could not read ${page}:`, error);
       response.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
-      response.end("OpenChat could not load its app page.");
+      response.end("OpenChat could not load this page.");
       return;
     }
     response.writeHead(200, {
@@ -163,7 +166,7 @@ webSockets.on("connection", (socket) => {
     if (payload.type === "create-room") {
       const room = typeof payload.room === "string" ? payload.room.trim() : "";
       if (!validRoomName(room)) {
-        reportError(socket, "Room names must be 1–32 characters and use letters, numbers, spaces, hyphens, or underscores.");
+        reportError(socket, "Room names must be 1-32 characters and use letters, numbers, spaces, hyphens, or underscores.");
         return;
       }
       const key = room.toLowerCase();

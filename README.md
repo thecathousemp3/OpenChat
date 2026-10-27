@@ -1,6 +1,6 @@
 # OpenChat
 
-**A self-hosted instant messenger with a little early-2000s desktop nostalgia and a browser-to-browser chat architecture.**
+**A self-hosted, monochrome pixel-style messenger with a browser-to-browser chat architecture.**
 
 OpenChat gives you a familiar buddy-list-and-chat-window experience without a hosted account system. Run the small Node.js server yourself, connect through a browser, and use Global Chat, create a room, or exchange a direct-message invitation with a friend.
 
@@ -28,6 +28,9 @@ OpenChat gives you a familiar buddy-list-and-chat-window experience without a ho
 - **Personal profiles:** choose a display name and picture. Profile information is sent to connected friends and room members.
 - **Portable encrypted backup:** export your local profile, friends, requests, and cached messages to a password-protected `.openchat` file.
 - **Self-hosted:** one small Node.js process serves the page and coordinates room membership and WebRTC signaling.
+- **IRC-style chat commands:** use `/help`, `/who`, `/me <action>`, and `/clear` in the message box.
+
+See the [feature tracker](FEATURES.md) for a direct comparison with BitChat's documented feature set, current implementation status, and a tracked sequence for the remaining platform-dependent work. Repository changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 ## Get started
 
@@ -36,6 +39,21 @@ OpenChat gives you a familiar buddy-list-and-chat-window experience without a ho
 - Node.js 22 or later
 - npm
 - A modern browser with WebRTC and Web Crypto support
+
+### Quick start by device
+
+Download and extract the [repository ZIP](https://github.com/thecathousemp3/OpenChat/archive/refs/heads/main.zip), or clone the repository, then run the launcher for your computer:
+
+| Platform | Launcher |
+| --- | --- |
+| Windows | [start-windows.bat](start-windows.bat) |
+| macOS | [start-macos.command](start-macos.command) |
+| Linux | [start-linux.sh](start-linux.sh) |
+| Phone or tablet | [Mobile quick start](START-MOBILE.md) |
+
+The desktop launchers check for Node.js 22 or later, install the locked dependencies if needed, and start the server. Keep the terminal window open while using OpenChat. On macOS, if double-clicking the `.command` file is blocked, run `bash ./start-macos.command` from Terminal in the extracted folder. On Linux, run `bash ./start-linux.sh` from the extracted project folder (or make it executable once with `chmod +x ./start-linux.sh` and then run `./start-linux.sh`).
+
+OpenChat runs in a mobile browser; it does not currently have a native mobile app or a public hosted instance. The landing page is informational and does not change the app's network requirements. See the [mobile quick start](START-MOBILE.md) for how to connect a phone to a self-hosted instance.
 
 ### Run locally
 
@@ -46,7 +64,9 @@ npm install
 npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Keep the Node.js process running while using shared chat.
+Open [http://localhost:3000](http://localhost:3000) for the project landing page, then choose **Launch OpenChat** or go directly to [http://localhost:3000/app](http://localhost:3000/app). Keep the Node.js process running while using shared chat.
+
+The landing page includes the room message-path diagram, peer-mesh scaling guide, setup steps, and a clear status for browser and native transports.
 
 To use a different address or port:
 
@@ -72,7 +92,7 @@ Every new server starts with one room: **Global Chat**. The room list and member
 
 Room chat is a direct mesh: each browser creates a separate WebRTC data channel to every other currently connected member. The room server tells members who is present and helps browsers exchange connection offers and answers. It does not receive room message text. The app waits until a channel to every listed participant is open before sending a room message; messages are not queued for offline members.
 
-Rooms have **no fixed participant cap**. Each browser connects directly to every other room member, so the full mesh grows quadratically: a room with *n* people needs *n × (n − 1) ÷ 2* peer connections overall. OpenChat will accept larger rooms, but browsers and networks have practical capacity limits; very large rooms may become slow or fail to connect. The [room mesh diagram](assets/room-mesh.svg) shows how the connection count grows.
+Rooms have **no fixed participant cap**. Each browser connects directly to every other room member, so the full mesh grows quadratically: a room with *n* people needs *n x (n - 1) / 2* peer connections overall. OpenChat will accept larger rooms, but browsers and networks have practical capacity limits; very large rooms may become slow or fail to connect. The [room mesh diagram](assets/room-mesh.svg) shows how the connection count grows.
 
 ### Add a friend and start a direct chat
 
@@ -86,6 +106,15 @@ Direct-message signaling is manual: OpenChat does not operate a direct-message s
 ### Choose a name and picture
 
 Edit your local profile in the sidebar. When your browser is connected, the selected name and picture are shared with your connected friends and the participants in your current shared room. Those details are not verified: another participant or server can claim a display name or picture.
+
+### Use chat commands
+
+The message box supports a small set of familiar IRC-style commands:
+
+- `/help` shows the available commands.
+- `/who` lists participants connected to the current conversation.
+- `/me <action>` sends an action message, such as `/me waves`.
+- `/clear` clears the current conversation history from this browser only. It does not delete copies stored by other participants.
 
 ### Back up or restore your profile
 
@@ -135,9 +164,9 @@ The password-protected export is encrypted, but encryption applies to the export
 
 ### Why a peer mesh is for small groups
 
-In a full mesh, every participant needs one connection to every other participant. With *n* members, that is *n × (n − 1) ÷ 2* peer connections across the room, and each participant maintains *n − 1* connections. This avoids routing message bodies through a central room server, but it uses more network and browser resources as a room grows. OpenChat imposes no fixed participant cap; actual capacity depends on each participant's browser, device, and network.
+In a full mesh, every participant needs one connection to every other participant. With *n* members, that is *n x (n - 1) / 2* peer connections across the room, and each participant maintains *n - 1* connections. This avoids routing message bodies through a central room server, but it uses more network and browser resources as a room grows. OpenChat imposes no fixed participant cap; actual capacity depends on each participant's browser, device, and network.
 
-### What “self-hosted” and “peer-to-peer” mean here
+### What "self-hosted" and "peer-to-peer" mean here
 
 You operate the room server, but room participants still depend on it to find room members and exchange connection setup data. The server is not a global user directory, and there is no central account or identity provider. Once connected, chat messages travel browser to browser. These properties reduce the server's role; they do not make the system anonymous, identity-proof, or immune to a malicious server.
 

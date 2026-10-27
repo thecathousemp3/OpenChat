@@ -94,9 +94,17 @@ test("health endpoint and app assets are served", async () => {
 
   const page = await fetch(`http://127.0.0.1:${port}/`);
   assert.equal(page.status, 200);
-  assert.match(await page.text(), /OpenChat \| Self-hosted instant messenger/);
+  const landing = await page.text();
+  assert.match(landing, /OpenChat: conversations, your way/);
+  assert.match(landing, /href="\/app"/);
+  assert.match(landing, /Bluetooth LE mesh/);
+  assert.match(landing, /Wi-Fi Direct/);
 
-  for (const asset of ["favicon.svg", "openchat-preview.svg"]) {
+  const app = await fetch(`http://127.0.0.1:${port}/app`);
+  assert.equal(app.status, 200);
+  assert.match(await app.text(), /OpenChat \| Self-hosted instant messenger/);
+
+  for (const asset of ["favicon.svg", "openchat-preview.svg", "message-path.svg", "room-mesh.svg"]) {
     const response = await fetch(`http://127.0.0.1:${port}/assets/${asset}`);
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-type"), /^image\/svg\+xml/);

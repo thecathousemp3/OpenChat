@@ -15,23 +15,22 @@
   <style>
     :root {
       color-scheme: dark;
-      --ink: #f5f5f5;
-      --muted: #b0b0b0;
-      --line: #383838;
-      --green: #d5d5d5;
-      --paper: #151515;
-      --sidebar: #101010;
-      --surface: #222;
-      --surface-hover: #303030;
-      --text-secondary: #dedede;
-      font-family: Tahoma, "Trebuchet MS", "Segoe UI", sans-serif;
+      --ink: #f7f7f7;
+      --muted: #a3a3a3;
+      --line: #454545;
+      --green: #fff;
+      --paper: #090909;
+      --sidebar: #050505;
+      --surface: #151515;
+      --surface-hover: #252525;
+      --text-secondary: #e5e5e5;
+      font-family: "Lucida Console", Consolas, "Courier New", monospace;
       font-synthesis: none;
-      text-rendering: optimizeLegibility;
+      text-rendering: geometricPrecision;
     }
 
     * { box-sizing: border-box; }
     body {
-      min-width: 280px;
       min-height: 100vh;
       height: 100vh;
       height: 100dvh;
@@ -57,7 +56,7 @@
       background: var(--paper);
       border: 1px solid #444;
       border-radius: 6px;
-      box-shadow: 0 22px 70px #0009, 0 0 0 1px #ffffff12, inset 0 1px #ffffff12;
+      box-shadow: 0 22px 70px #0009;
     }
 
     .titlebar {
@@ -70,7 +69,7 @@
       color: #fff;
       background: linear-gradient(180deg, #585858 0%, #393939 18%, #252525 55%, #181818 100%);
       border-bottom: 1px solid #080808;
-      box-shadow: inset 0 1px #ffffff75, inset 0 -1px #aaa5;
+      box-shadow: none;
       text-shadow: 0 1px 1px #0009;
       font-size: 11px;
       letter-spacing: .04em;
@@ -79,10 +78,10 @@
     .titlebar-brand > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .titlebar-mark { display: grid; width: 16px; height: 16px; flex: 0 0 16px; place-items: center; border: 1px solid #ddd; border-radius: 4px; color: #fff; font-size: 10px; font-weight: 700; }
     .window-dots { display: flex; flex: 0 0 auto; gap: 3px; }
-    .window-dots span { width: 15px; height: 13px; flex: 0 0 15px; border: 1px solid #ccc; border-radius: 2px; color: #fff; background: linear-gradient(180deg, #777, #444); box-shadow: inset 0 1px #ffffff70; text-align: center; line-height: 10px; font-size: 10px; }
-    .window-dots span:nth-child(1)::before { content: "−"; }
-    .window-dots span:nth-child(2)::before { content: "□"; font-size: 8px; }
-    .window-dots span:nth-child(3)::before { content: "×"; }
+    .window-dots span { width: 15px; height: 13px; flex: 0 0 15px; border: 1px solid #ccc; border-radius: 2px; color: #fff; background: linear-gradient(180deg, #777, #444); box-shadow: none; text-align: center; line-height: 10px; font-size: 10px; }
+    .window-dots span:nth-child(1)::before { content: "-"; }
+    .window-dots span:nth-child(2)::before { content: "+"; font-size: 8px; }
+    .window-dots span:nth-child(3)::before { content: "x"; }
     .workspace { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 0; }
 
     .sidebar {
@@ -151,7 +150,7 @@
     }
     .nav-button { color: #ddd; font-size: 12px; }
     .nav-button:hover, .contact-button:hover { background: var(--surface-hover); }
-    .nav-button.active { color: #fff; background: linear-gradient(180deg, #404040, #292929); box-shadow: inset 0 1px #ffffff22, inset 0 -1px #111; font-weight: 700; }
+    .nav-button.active { color: #fff; background: linear-gradient(180deg, #404040, #292929); box-shadow: none; font-weight: 700; }
     .nav-icon { width: 19px; text-align: center; font-size: 15px; }
     .nav-count { margin-left: auto; color: var(--muted); font-size: 10px; }
     .contact-list { min-height: 0; flex: 1 1 auto; overflow-y: auto; }
@@ -191,7 +190,7 @@
       border-radius: 4px;
       background: linear-gradient(180deg, #303030, #202020);
       color: #eee;
-      box-shadow: inset 0 1px #ffffff14, inset 0 -1px #0d0c15;
+      box-shadow: none;
       font-size: 11px;
       cursor: pointer;
     }
@@ -216,7 +215,7 @@
       border-radius: 8px;
       color: #fff;
       background: linear-gradient(145deg, #414141, #252525);
-      box-shadow: inset 0 1px #ffffff22, inset 0 -1px #11101b;
+      box-shadow: none;
       font-size: 17px;
     }
     .chat-heading h1 { margin: 0; font-size: 14px; }
@@ -270,7 +269,7 @@
       background: #191919;
       transition: border-color .15s, box-shadow .15s;
     }
-    .composer:focus-within { border-color: #bbb; box-shadow: 0 0 0 3px #ffffff22; }
+    .composer:focus-within { border-color: #bbb; box-shadow: none; }
     .composer input { width: 100%; min-width: 0; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: 11px; }
     .composer input::placeholder { color: #aaa; }
     .send-button {
@@ -281,14 +280,14 @@
       border-radius: 4px;
       color: #fff;
       background: linear-gradient(180deg, #888, #555 52%, #3c3c3c);
-      box-shadow: inset 0 1px #ffffff9c, inset 0 -1px #171717;
+      box-shadow: none;
       cursor: pointer;
     }
     .send-button:hover { background: linear-gradient(180deg, #aaa, #666 52%, #4a4a4a); }
-    .statusbar { display: flex; align-items: center; justify-content: space-between; padding: 0 14px; border-top: 1px solid #444; color: #bbb; background: linear-gradient(180deg, #222, #151515); box-shadow: inset 0 1px #ffffff0d; font-size: 9px; }
+    .statusbar { display: flex; align-items: center; justify-content: space-between; padding: 0 14px; border-top: 1px solid #444; color: #bbb; background: linear-gradient(180deg, #222, #151515); box-shadow: none; font-size: 9px; }
     .statusbar-left { display: flex; align-items: center; gap: 7px; }
     .statusbar-dot { width: 7px; height: 7px; border: 1px solid #777; border-radius: 50%; background: #444; }
-    .statusbar-dot.online { border-color: #fff; background: #ddd; box-shadow: 0 0 6px #ffffff80; }
+    .statusbar-dot.online { border-color: #fff; background: #ddd; box-shadow: none; }
 
     .modal-backdrop { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; overflow-y: auto; padding: 20px; background: #000a; }
     .modal-backdrop[hidden] { display: none; }
@@ -333,6 +332,7 @@
     @media (max-width: 390px) {
       .workspace { grid-template-columns: 54px minmax(0, 1fr); }
       .nav-button, .contact-button, .sidebar-action { width: 38px; }
+      .profile-actions { grid-template-columns: 1fr; }
       .profile-actions .sidebar-action { width: 38px; }
       .chat-heading { gap: 8px; }
       .room-icon { width: 32px; height: 32px; }
@@ -342,6 +342,20 @@
     @media (max-width: 360px) {
       .titlebar { padding-right: 8px; padding-left: 8px; }
       .titlebar-brand > span:last-child { display: none; }
+    }
+    @media (max-width: 320px) {
+      .workspace { grid-template-columns: 42px minmax(0, 1fr); }
+      .sidebar { padding-right: 3px; padding-left: 3px; }
+      .nav-button, .contact-button, .sidebar-action, .profile-actions .sidebar-action { width: 32px; }
+      .profile-actions { grid-template-columns: 1fr; gap: 4px; }
+      .sidebar-actions { gap: 5px; padding-top: 8px; }
+      .chat-header { padding-right: 7px; padding-left: 7px; }
+      .chat-heading { gap: 6px; }
+      .room-icon { width: 28px; height: 28px; }
+      .chat-heading h1 { font-size: 11px; }
+      .chat-heading p { font-size: 8px; }
+      .header-info { gap: 4px; padding-right: 5px; padding-left: 5px; font-size: 8px; }
+      .composer-wrap { padding-right: 7px; padding-left: 7px; }
     }
     @media (max-height: 600px) {
       .app-shell { height: calc(100vh - 24px); margin: 0 auto; }
@@ -382,6 +396,98 @@
       .sidebar-actions, .profile-actions { width: 100%; justify-items: center; }
       .sidebar-action, .profile-actions .sidebar-action { width: 43px; height: 28px; padding: 0; }
     }
+    .app-shell {
+      border: 1px solid #666;
+      border-radius: 0;
+      box-shadow: 0 22px 55px #0009;
+    }
+    .titlebar {
+      background: #101010;
+      border-bottom: 1px solid #666;
+      box-shadow: none;
+      letter-spacing: .08em;
+    }
+    .titlebar-mark, .window-dots span {
+      border-radius: 0;
+      background: #111;
+      box-shadow: none;
+    }
+    .titlebar-mark { border: 1px solid #eee; }
+    .window-dots span { border-color: #777; }
+    .sidebar { background: #070707; }
+    .avatar, .contact-avatar, .message-avatar, .room-icon {
+      border: 1px solid #555;
+      border-radius: 0;
+      background: #171717;
+      image-rendering: pixelated;
+    }
+    .avatar { border: 1px solid #aaa; color: #fff; }
+    .nav-button, .contact-button, .sidebar-action, .header-info,
+    .request-card, .request-card-actions button, .composer,
+    .send-button, .modal, .modal input, .modal-actions button,
+    .connection-modal > input, .connection-modal textarea,
+    .connection-choices button {
+      border-radius: 0;
+    }
+    .nav-button.active {
+      color: #080808;
+      background: #eee;
+      box-shadow: none;
+    }
+    .sidebar-action, .request-card-actions button, .modal-actions button,
+    .connection-choices button {
+      color: #f5f5f5;
+      background: #111;
+      box-shadow: none;
+    }
+    .sidebar-action:hover, .request-card-actions button:hover,
+    .modal-actions button:hover, .connection-choices button:hover {
+      border-color: #fff;
+      color: #050505;
+      background: #eee;
+    }
+    .chat-header, .composer-wrap, .statusbar { border-color: #454545; }
+    .room-icon {
+      color: #fff;
+      background: #141414;
+      box-shadow: none;
+    }
+    .header-info, .composer { background: #0c0c0c; }
+    .conversation {
+      background-color: #090909;
+      background-image: radial-gradient(#ffffff12 1px, transparent 1px);
+      background-size: 12px 12px;
+    }
+    .message-avatar { box-shadow: none; }
+    .message-topline strong { letter-spacing: .025em; }
+    .message-topline time { color: #999; }
+    .composer:focus-within { border-color: #fff; box-shadow: none; }
+    .send-button {
+      color: #050505;
+      background: #eee;
+      box-shadow: none;
+    }
+    .send-button:hover { color: #fff; background: #303030; }
+    .statusbar { background: #080808; box-shadow: none; }
+    .statusbar-dot, .online-dot, .contact-presence { border-radius: 0; }
+    .statusbar-dot.online { border-color: #fff; background: #fff; box-shadow: none; }
+    .modal { border-color: #666; background: #090909; box-shadow: 0 24px 70px #000b; }
+    .modal input, .connection-modal > input, .connection-modal textarea { background: #050505; }
+    .modal-actions .primary, .connection-choices button.primary {
+      border-color: #eee;
+      color: #050505;
+      background: #eee;
+      box-shadow: none;
+    }
+    .toast { border-radius: 0; border-color: #777; background: #090909; font-family: inherit; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible {
+      outline: 2px solid #fff;
+      outline-offset: 2px;
+    }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: #070707; }
+    ::-webkit-scrollbar-thumb { border: 2px solid #070707; background: #555; }
+    ::-webkit-scrollbar-thumb:hover { background: #aaa; }
   </style>
 </head>
 <body>
@@ -396,7 +502,7 @@
           <button class="avatar" id="avatarButton" type="button" aria-label="Change profile picture" title="Change profile picture">OC</button>
           <div class="profile-copy">
             <button class="profile-name" id="editProfileNameButton" type="button" title="Edit your name">New user</button>
-            <button class="status-control" id="myCodeButton" type="button" aria-label="Copy your friend code"><span id="myCodeText">OC-…</span> · copy</button>
+            <button class="status-control" id="myCodeButton" type="button" aria-label="Copy your friend code"><span id="myCodeText">OC-...</span> Copy</button>
           </div>
         </div>
         <div class="section-label">Chats</div>
@@ -433,7 +539,7 @@
         <div class="composer-wrap">
           <form class="composer" id="messageForm">
             <input id="messageInput" type="text" maxlength="500" autocomplete="off" placeholder="Say something nice..." aria-label="Type a message">
-            <button class="send-button" type="submit" aria-label="Send message">➤</button>
+            <button class="send-button" type="submit" aria-label="Send message">GO</button>
           </form>
         </div>
       </section>
@@ -460,10 +566,10 @@
   <div class="modal-backdrop" id="connectionBackdrop" hidden>
     <section class="modal connection-modal" role="dialog" aria-modal="true" aria-labelledby="connectionTitle">
       <h2 id="connectionTitle">Add a friend</h2>
-      <p id="connectionDescription">Exchange friend codes through a channel you trust. Codes aren’t cryptographic proof, and can’t route requests alone; connect directly to send one.</p>
+      <p id="connectionDescription">Exchange friend codes through a channel you trust. Codes are not cryptographic proof, and cannot route requests alone; connect directly to send one.</p>
       <label id="displayNameLabel" for="displayNameInput">Your nickname</label>
       <input id="displayNameInput" type="text" maxlength="32" value="New user" autocomplete="nickname">
-      <label for="friendCodeInput">Your friend’s code</label>
+      <label for="friendCodeInput">Your friend's code</label>
       <input id="friendCodeInput" type="text" maxlength="18" placeholder="OC-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false">
       <div id="connectionChoices" class="connection-choices">
         <button class="primary" id="createInviteButton" type="button">Invite your friend</button>
@@ -775,7 +881,7 @@
       const isExport = action === "export";
       document.getElementById("profileModalTitle").textContent = isExport ? "Save profile" : "Restore profile";
       document.getElementById("profileModalDescription").textContent = isExport
-        ? "Choose a password with at least 12 characters. You’ll need it to restore this file."
+        ? "Choose a password with at least 12 characters. You'll need it to restore this file."
         : "Enter the password used when this profile was saved.";
       document.getElementById("profilePassword").value = "";
       document.getElementById("profilePassword").autocomplete = isExport ? "new-password" : "current-password";
@@ -1000,12 +1106,12 @@
       for (const friend of appState.friends) {
         const peer = activePeers.find((candidate) => candidate.code === friend.code);
         displayedCodes.add(friend.code);
-        list.append(createPersonButton(friend, peer, peer ? "online · direct" : "offline · saved here"));
+        list.append(createPersonButton(friend, peer, peer ? "online / direct" : "offline / saved here"));
       }
       for (const peer of activePeers) {
         if (displayedCodes.has(peer.code)) continue;
         const pending = appState.outgoingRequests.some((request) => request.code === peer.code);
-        list.append(createPersonButton(peer, peer, pending ? "friend request sent" : "connected · not added"));
+        list.append(createPersonButton(peer, peer, pending ? "friend request sent" : "connected / not added"));
       }
       document.getElementById("buddyCount").textContent = `${activePeers.length} online`;
       document.getElementById("statusIndicator").classList.toggle("online", activePeers.length > 0);
@@ -1049,7 +1155,7 @@
       for (const request of appState.outgoingRequests) {
         const card = createElement("div", "request-card");
         card.append(createElement("strong", "", request.name));
-        card.append(createElement("small", "", `${request.code} · request sent`));
+        card.append(createElement("small", "", `${request.code} / request sent`));
         list.append(card);
       }
     }
@@ -1565,7 +1671,7 @@
           avatar: appState.identity.avatar
         }));
         closeConnectionDialog();
-        showToast("Direct WebRTC connection opened. Verifying friend code…");
+        showToast("Direct WebRTC connection opened. Verifying friend code...");
       };
       channel.onmessage = (event) => handlePeerPayload(peer, event.data);
       channel.onclose = () => {
@@ -1633,7 +1739,7 @@
       try {
         signal = JSON.parse(value);
       } catch (error) {
-        throw new Error("That isn’t valid invite data. Paste the complete JSON you received.");
+        throw new Error("That isn't valid invite data. Paste the complete JSON you received.");
       }
       if (!signal || signal.type !== expectedType || typeof signal.sdp !== "string" || signal.sdp.length > 100000) {
         throw new Error(`Expected a valid ${expectedType} invite. Check that you copied the entire message.`);
@@ -1667,7 +1773,7 @@
           return;
         }
         if (expectedCode === appState.identity.inviteCode) {
-          showToast("That’s your own friend code. Enter someone else’s code.");
+          showToast("That's your own friend code. Enter someone else's code.");
           return;
         }
         const peer = createPeerConnection(expectedCode);
@@ -1697,7 +1803,7 @@
           return;
         }
         if (expectedCode === appState.identity.inviteCode) {
-          showToast("That’s your own friend code. Enter someone else’s code.");
+          showToast("That's your own friend code. Enter someone else's code.");
           return;
         }
         const description = parseSignal(signalText.value, "offer");
@@ -1723,7 +1829,7 @@
         const description = parseSignal(signalText.value, "answer");
         await pendingConnection.connection.setRemoteDescription(description);
         connectionCommitted = true;
-        document.getElementById("signalHelp").textContent = "Answer received. Waiting for the direct connection to open…";
+        document.getElementById("signalHelp").textContent = "Answer received. Waiting for the direct connection to open...";
         document.getElementById("signalAction").disabled = true;
       } catch (error) {
         showToast(error.message || "Could not apply the peer answer.");
@@ -1754,8 +1860,46 @@
     document.getElementById("messageForm").addEventListener("submit", (event) => {
       event.preventDefault();
       const input = document.getElementById("messageInput");
-      const text = input.value.trim();
+      let text = input.value.trim();
       if (!text) return;
+      if (text.startsWith("/")) {
+        const [command, ...args] = text.slice(1).split(/\s+/);
+        const argument = args.join(" ").trim();
+        if (command === "help" && !argument) {
+          showToast("Commands: /help, /who, /me <action>, /clear");
+          input.value = "";
+          return;
+        }
+        if (command === "who" && !argument) {
+          const names = activeView === "room"
+            ? [...roomMembers.values()].map((member) => member.name)
+            : [...peers.values()].filter((peer) => peer.channel?.readyState === "open").map((peer) => peer.name);
+          showToast(names.length ? `Connected here: ${[appState.identity.name, ...names].join(", ")}` : "No other participants are connected here.");
+          input.value = "";
+          return;
+        }
+        if (command === "clear" && !argument) {
+          if (activeView === "room") {
+            appState.roomMessages[activeRoom] = [];
+            renderRoomConversation(activeRoom);
+          } else if (activePeerId) {
+            const peer = peers.get(activePeerId);
+            if (peer) {
+              appState.messages[peer.code] = [];
+              renderConversation(peer.code);
+            }
+          }
+          saveState();
+          input.value = "";
+          return;
+        }
+        if (command === "me" && argument) {
+          text = `* ${appState.identity.name} ${argument}`;
+        } else {
+          showToast("Unknown or incomplete command. Try /help.");
+          return;
+        }
+      }
       if (activeView === "room") {
         if (!roomJoined || roomSocket?.readyState !== WebSocket.OPEN) {
           showToast("Shared chat is reconnecting. Your message was not sent.");
@@ -1856,7 +2000,7 @@
           peer.channel.send(JSON.stringify({ type: "friend-accepted", code: appState.identity.code }));
         }
         saveFriend(request.code, request.name, request.emoji, request.avatar, request.inviteCode);
-        showToast(peer ? `${request.name} added to your friends.` : `${request.name} saved. They’ll be added when you reconnect.`);
+        showToast(peer ? `${request.name} added to your friends.` : `${request.name} saved. They'll be added when you reconnect.`);
         return;
       }
       if (button.dataset.requestAction === "reject") {
@@ -1944,7 +2088,7 @@
     document.getElementById("joinInviteButton").addEventListener("click", () => setSignalPanel("joining-offer", "Paste their one-time invite. Friend requests are sent only after the direct connection verifies the code you entered."));
     document.getElementById("signalAction").addEventListener("click", async () => {
       if (signalingStep === "offer-ready") {
-        setSignalPanel("waiting-answer", "Paste their answer. Both of you must enter and compare each other’s friend code before the request is sent.");
+        setSignalPanel("waiting-answer", "Paste their answer. Both of you must enter and compare each other's friend code before the request is sent.");
         signalText.focus();
         return;
       }

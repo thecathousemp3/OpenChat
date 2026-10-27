@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="description" content="OpenChat is a self-hosted browser messenger with peer-to-peer rooms, direct chats, and portable encrypted backups.">
+  <meta property="og:title" content="OpenChat: conversations, your way">
+  <meta property="og:description" content="A self-hosted browser messenger with WebRTC peer meshes, shared rooms, and portable encrypted backups.">
+  <meta property="og:type" content="website">
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <title>OpenChat: conversations, your way</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0a0a;
+      --panel: #131313;
+      --line: #303030;
+      --text: #f3f3f3;
+      --muted: #a7a7a7;
+      --lime: #f0f0f0;
+      --mint: #c5c5c5;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse at 75% 8%, #42424226 0, transparent 36rem),
+        radial-gradient(ellipse at 0% 50%, #25252520 0, transparent 34rem),
+        var(--bg);
+    }
+    a { color: inherit; }
+    .wrap { width: min(1120px, calc(100% - 48px)); margin: 0 auto; }
+    .topbar { height: 76px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #ffffff0d; }
+    .brand { display: inline-flex; align-items: center; gap: 11px; color: var(--text); text-decoration: none; font-size: 15px; font-weight: 750; letter-spacing: .02em; }
+    .brand-mark { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid #ffffff3a; border-radius: 9px; color: var(--lime); background: #ffffff0a; font-size: 15px; }
+    .topnav { display: flex; align-items: center; gap: 27px; color: var(--muted); font-size: 13px; }
+    .topnav a { text-decoration: none; transition: color .18s ease; }
+    .topnav a:hover { color: var(--text); }
+    .button { display: inline-flex; min-height: 46px; align-items: center; justify-content: center; gap: 9px; padding: 0 18px; border: 1px solid transparent; border-radius: 9px; color: #101010; background: var(--lime); font-size: 13px; font-weight: 750; text-decoration: none; box-shadow: 0 8px 26px #ffffff18; transition: transform .18s ease, box-shadow .18s ease; }
+    .button:hover { transform: translateY(-2px); box-shadow: 0 12px 32px #ffffff24; }
+    .button.secondary { border-color: #ffffff20; color: var(--text); background: #ffffff08; box-shadow: none; }
+    .hero { display: grid; grid-template-columns: 1.02fr .98fr; align-items: center; gap: 42px; min-height: 520px; padding: 58px 0 62px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 9px; padding: 7px 10px; border: 1px solid #ffffff30; border-radius: 99px; color: var(--lime); background: #ffffff08; font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    .eyebrow-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--lime); }
+    h1 { max-width: 630px; margin: 22px 0 19px; font-size: clamp(42px, 6vw, 72px); font-weight: 720; letter-spacing: -.065em; line-height: .99; }
+    h1 span { color: var(--lime); }
+    .hero-copy { max-width: 505px; margin: 0; color: #b7beb3; font-size: 16px; line-height: 1.75; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 29px; }
+    .hero-note { display: flex; align-items: center; gap: 9px; margin-top: 23px; color: #849080; font-size: 11px; }
+    .hero-note svg { flex: 0 0 auto; color: var(--mint); }
+    .visual { position: relative; min-width: 0; }
+    .visual-glow { position: absolute; inset: 14% 8%; border-radius: 50%; background: #ffffff0d; filter: blur(55px); }
+    .preview-frame { position: relative; overflow: hidden; padding: 9px; border: 1px solid #ffffff1a; border-radius: 16px; background: linear-gradient(145deg, #ffffff10, #ffffff03); box-shadow: 0 40px 100px #0008; transform: perspective(1000px) rotateY(-5deg) rotateX(2deg); }
+    .preview-frame img { display: block; width: 100%; height: auto; border-radius: 9px; }
+    .floating-tag { position: absolute; right: -17px; bottom: 31px; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #ffffff1c; border-radius: 12px; background: #191d18ed; box-shadow: 0 15px 40px #0008; font-size: 11px; }
+    .tag-icon { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 8px; color: var(--lime); background: #ffffff12; }
+    .floating-tag strong, .floating-tag small { display: block; }
+    .floating-tag small { margin-top: 3px; color: var(--muted); font-size: 9px; }
+    .proofbar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 18px; padding: 21px 0; border-top: 1px solid #ffffff11; border-bottom: 1px solid #ffffff11; color: #9da69a; font-size: 11px; }
+    .proofbar span { display: inline-flex; align-items: center; gap: 8px; }
+    .proofbar b { color: var(--text); font-weight: 600; }
+    .section { padding: 96px 0; }
+    .section-head { max-width: 640px; margin-bottom: 34px; }
+    .kicker { margin: 0 0 11px; color: var(--lime); font-size: 10px; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+    h2 { margin: 0; font-size: clamp(28px, 4vw, 43px); letter-spacing: -.045em; line-height: 1.12; }
+    .section-intro { max-width: 590px; margin: 13px 0 0; color: var(--muted); font-size: 14px; line-height: 1.75; }
+    .diagram-panel { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: #090909; }
+    .diagram-panel img { display: block; width: 100%; height: auto; }
+    .diagram-caption { display: flex; justify-content: space-between; gap: 18px; padding: 14px 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .diagram-caption strong { color: var(--text); font-weight: 650; }
+    .mesh-panel { display: grid; grid-template-columns: .72fr 1.28fr; align-items: center; gap: 28px; margin-top: 16px; padding: 26px; border: 1px solid var(--line); border-radius: 14px; background: #121212; }
+    .mesh-panel h3 { margin: 0; font-size: 20px; letter-spacing: -.03em; }
+    .mesh-panel p { margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .mesh-panel img { display: block; width: 100%; height: auto; border: 1px solid #303030; border-radius: 8px; }
+    .setup-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .setup-step { min-height: 178px; padding: 22px; border: 1px solid var(--line); border-radius: 12px; background: #121212; }
+    .setup-number { color: #999; font-family: "Lucida Console", Consolas, monospace; font-size: 11px; letter-spacing: .1em; }
+    .setup-step h3 { margin: 17px 0 8px; font-size: 15px; }
+    .setup-step p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .setup-step code { padding: 2px 5px; border: 1px solid #3a3a3a; color: var(--text); background: #080808; font-size: 11px; }
+    .setup-footnote { margin: 17px 0 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
+    .setup-footnote a { color: var(--text); text-underline-offset: 3px; }
+    .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; }
+    .feature { min-height: 205px; padding: 23px; border: 1px solid var(--line); border-radius: 13px; background: linear-gradient(145deg, #191919, #111); }
+    .feature-icon { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid #ffffff12; border-radius: 10px; color: var(--lime); background: #ffffff08; font-size: 10px; font-weight: 750; letter-spacing: -.06em; }
+    .feature h3 { margin: 20px 0 9px; font-size: 15px; letter-spacing: -.02em; }
+    .feature p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .network { display: grid; grid-template-columns: .9fr 1.1fr; gap: 50px; align-items: start; padding: 34px; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(135deg, #191919, #111 65%); }
+    .network h2 { font-size: clamp(25px, 3.2vw, 36px); }
+    .network p { color: var(--muted); font-size: 13px; line-height: 1.75; }
+    .network-list { display: grid; gap: 10px; }
+    .network-item { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 11px; padding: 13px 14px; border: 1px solid #ffffff12; border-radius: 10px; background: #0e100e77; }
+    .network-item .feature-icon { width: 29px; height: 29px; font-size: 7px; letter-spacing: -.08em; }
+    .network-item strong { display: block; font-size: 12px; }
+    .network-item small { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .status { padding: 5px 7px; border: 1px solid #ffffff35; border-radius: 99px; color: var(--lime); background: #ffffff08; font-size: 9px; white-space: nowrap; }
+    .status.planned { border-color: #ffffff1c; color: #b3b3b3; background: #ffffff07; }
+    .honesty { margin-top: 16px !important; padding: 12px 14px; border-left: 2px solid #888; color: #c8c8c8 !important; background: #ffffff07; font-size: 11px !important; }
+    .privacy-band { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 28px; padding: 35px; border: 1px solid #ffffff16; border-radius: 15px; background: radial-gradient(ellipse at 90% 50%, #ffffff0d, transparent 45%), #151515; }
+    .privacy-band h2 { font-size: 25px; }
+    .privacy-band p { max-width: 660px; margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 15px; padding: 24px 0 30px; border-top: 1px solid #ffffff11; color: #8d9689; font-size: 10px; }
+    .footer-links { display: flex; gap: 18px; }
+    .footer a { color: #b5bdb1; text-decoration: none; }
+    .footer a:hover { color: var(--lime); }
+    .topnav a:focus-visible, .button:focus-visible, .footer a:focus-visible, .setup-footnote a:focus-visible {
+      outline: 2px solid #fff;
+      outline-offset: 3px;
+    }
+    @media (max-width: 850px) {
+      .hero { grid-template-columns: 1fr; gap: 45px; min-height: 0; padding: 65px 0; }
+      .hero-copy { max-width: 600px; }
+      .visual { width: min(620px, 100%); margin: 0 auto; }
+      .preview-frame { transform: none; }
+      .feature-grid { grid-template-columns: repeat(2, 1fr); }
+      .network { grid-template-columns: 1fr; gap: 19px; }
+      .mesh-panel { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      .wrap { width: min(100% - 32px, 1120px); }
+      .topbar { height: 64px; }
+      .topnav { gap: 14px; font-size: 11px; }
+      .topnav a:nth-child(2), .topnav a:nth-child(3) { display: none; }
+      .topnav .button { min-height: 37px; padding: 0 12px; }
+      .hero { padding: 53px 0 54px; }
+      h1 { font-size: clamp(43px, 12vw, 61px); }
+      .hero-copy { font-size: 14px; }
+      .hero-actions { display: grid; grid-template-columns: 1fr 1fr; }
+      .button { padding: 0 12px; font-size: 11px; }
+      .floating-tag { right: 7px; bottom: 12px; }
+      .proofbar { justify-content: flex-start; gap: 12px 20px; font-size: 10px; }
+      .section { padding: 66px 0; }
+      .feature-grid { grid-template-columns: 1fr; }
+      .feature { min-height: 0; }
+      .setup-grid { grid-template-columns: 1fr; }
+      .setup-step { min-height: 0; }
+      .mesh-panel { padding: 17px; }
+      .diagram-caption { flex-direction: column; gap: 4px; }
+      .network { padding: 23px 17px; }
+      .network-item { grid-template-columns: 29px 1fr; }
+      .network-item .status { grid-column: 2; justify-self: start; }
+      .privacy-band { grid-template-columns: 1fr; padding: 24px 19px; }
+      .privacy-band .button { justify-self: start; }
+      .footer { align-items: flex-start; flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="wrap topbar">
+    <a class="brand" href="/" aria-label="OpenChat home"><span class="brand-mark" aria-hidden="true">O</span> OpenChat</a>
+    <nav class="topnav" aria-label="Main navigation">
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#network">Network status</a>
+      <a class="button" href="/app">Open the app</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="wrap hero" aria-labelledby="heroTitle">
+      <div>
+        <div class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span> Your server. Your conversations.</div>
+        <h1 id="heroTitle">Chat directly.<br><span>Stay in control.</span></h1>
+        <p class="hero-copy">OpenChat is a self-hosted messenger for small communities and close friends. Bring up your own server, create a room, and let browsers connect peer to peer.</p>
+        <div class="hero-actions">
+          <a class="button" href="/app">Launch OpenChat</a>
+          <a class="button secondary" href="https://github.com/thecathousemp3/OpenChat">Explore the source</a>
+        </div>
+        <div class="hero-note">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.7 13 3.5v3.8c0 3.2-2 5.5-5 7-3-1.5-5-3.8-5-7V3.5L8 1.7Z" stroke="currentColor" stroke-width="1.2"/><path d="m5.7 7.8 1.5 1.5 3.2-3.2" stroke="currentColor" stroke-width="1.2"/></svg>
+          Experimental software. Not independently security reviewed.
+        </div>
+      </div>
+      <div class="visual" aria-label="Illustrated preview of the OpenChat messenger">
+        <div class="visual-glow" aria-hidden="true"></div>
+        <div class="preview-frame"><img src="assets/openchat-preview.svg" alt="OpenChat desktop-style chat interface preview"></div>
+        <div class="floating-tag"><span class="tag-icon" aria-hidden="true">P2P</span><span><strong>Peer-to-peer rooms</strong><small>WebRTC data channels</small></span></div>
+      </div>
+    </section>
+
+    <div class="wrap proofbar" aria-label="Product characteristics">
+      <span><b>Self-hosted</b> room server</span>
+      <span><b>Browser-to-browser</b> message transport</span>
+      <span><b>No account</b> or phone number</span>
+      <span><b>Encrypted</b> portable profile backups</span>
+    </div>
+
+    <section class="wrap section" id="features" aria-labelledby="featuresTitle">
+      <div class="section-head">
+        <p class="kicker">Made for conversations</p>
+        <h2 id="featuresTitle">A familiar chat, with the wiring out in the open.</h2>
+        <p class="section-intro">No hosted account system or hidden message relay for room text. You run the room server and can inspect what the current browser app does.</p>
+      </div>
+      <div class="feature-grid">
+        <article class="feature"><span class="feature-icon" aria-hidden="true">P2P</span><h3>Peer-mesh rooms</h3><p>Room members establish individual WebRTC data channels. The server handles membership and signaling, not the shared-room message body.</p></article>
+        <article class="feature"><span class="feature-icon" aria-hidden="true">DM</span><h3>Direct chats</h3><p>Connect with friends using exchanged offers and answers. Friend codes help compare details, but are not cryptographic identity proof.</p></article>
+        <article class="feature"><span class="feature-icon" aria-hidden="true">DATA</span><h3>Your profile, portable</h3><p>Keep a local profile, contacts, and recent history. Export a password-protected backup encrypted in your browser.</p></article>
+        <article class="feature"><span class="feature-icon" aria-hidden="true">CMD</span><h3>Quick commands</h3><p>Use /help, /who, /me, and /clear for lightweight IRC-style actions in your current conversation.</p></article>
+        <article class="feature"><span class="feature-icon" aria-hidden="true">HOST</span><h3>Self-hosted by design</h3><p>Run the small Node.js service yourself. Room names and membership are kept in server memory and reset on restart.</p></article>
+        <article class="feature"><span class="feature-icon" aria-hidden="true">INFO</span><h3>Honest boundaries</h3><p>See how messages travel, what metadata the server sees, and which network conditions can prevent a direct connection.</p></article>
+      </div>
+    </section>
+
+    <section class="wrap section" id="how-it-works" aria-labelledby="howTitle">
+      <div class="section-head">
+        <p class="kicker">A transparent architecture</p>
+        <h2 id="howTitle">Your room server coordinates. Browsers carry the conversation.</h2>
+        <p class="section-intro">The server helps participants find each other and exchange WebRTC setup details. Once connected, browsers send room messages directly over peer data channels.</p>
+      </div>
+      <figure class="diagram-panel">
+        <img src="assets/message-path.svg" alt="Diagram showing browsers exchanging room messages directly, with a separate server path for room membership and WebRTC signaling">
+        <figcaption class="diagram-caption">
+          <span><strong>Message content:</strong> sent directly between connected browsers.</span>
+          <span><strong>Server metadata:</strong> membership, profile details, and connection signaling.</span>
+        </figcaption>
+      </figure>
+      <div class="mesh-panel">
+        <div>
+          <p class="kicker">Designed for small rooms</p>
+          <h3>More people means more connections.</h3>
+          <p>Each participant maintains a connection to every other participant. Ten people require 45 peer connections across the room, or nine for each browser. There is no fixed participant cap, but actual capacity depends on devices and networks.</p>
+        </div>
+        <img src="assets/room-mesh.svg" alt="Diagram comparing four room members and six connections with ten members and 45 connections">
+      </div>
+    </section>
+
+    <section class="wrap section" id="getting-started" aria-labelledby="startTitle">
+      <div class="section-head">
+        <p class="kicker">Getting started</p>
+        <h2 id="startTitle">Bring up a room in three steps.</h2>
+        <p class="section-intro">OpenChat is self-hosted. There is no public account service or shared hosted instance; you run the server and decide how to host it.</p>
+      </div>
+      <div class="setup-grid">
+        <article class="setup-step">
+          <span class="setup-number">01 / HOST</span>
+          <h3>Run the server</h3>
+          <p>Install Node.js 22 or later, install the project dependencies, then run <code>npm start</code>. Keep the process running while people use the room.</p>
+        </article>
+        <article class="setup-step">
+          <span class="setup-number">02 / PROFILE</span>
+          <h3>Open the app</h3>
+          <p>Visit <code>/app</code> on your instance and choose a display name. Your profile and recent history stay in this browser's local storage.</p>
+        </article>
+        <article class="setup-step">
+          <span class="setup-number">03 / CONNECT</span>
+          <h3>Start a conversation</h3>
+          <p>Join Global Chat, create a room, or exchange a friend code and connection details with someone you know.</p>
+        </article>
+      </div>
+      <p class="setup-footnote">For mobile browsers and internet hosting, follow the <a href="https://github.com/thecathousemp3/OpenChat/blob/main/README.md#get-started">setup guide</a>. A reachable HTTPS address is required for many browser features. Room chat also depends on the signaling server staying available. The server does not currently enforce room permissions.</p>
+    </section>
+
+    <section class="wrap section" id="network" aria-labelledby="networkTitle">
+      <div class="network">
+        <div>
+          <p class="kicker">Transport, without the hype</p>
+          <h2 id="networkTitle">What works today, and what still needs native apps.</h2>
+          <p>OpenChat currently uses WebRTC over IP networks for peer connections. A room server is still required for discovery and signaling. WebRTC may use a local Wi-Fi path when peers can reach one another, but OpenChat does not implement Wi-Fi Direct, hotspot discovery, or standalone Wi-Fi mesh.</p>
+          <p class="honesty">Bluetooth LE mesh, multi-hop offline relaying, Nostr relay channels, location-based channels, and encrypted store-and-forward are not implemented in this browser app. Browser Bluetooth APIs cannot provide the background BLE mesh behavior of a native app.</p>
+        </div>
+        <div class="network-list" aria-label="Transport feature status">
+          <div class="network-item"><span class="feature-icon" aria-hidden="true">P2P</span><span><strong>WebRTC peer mesh</strong><small>IP networking; room discovery/signaling depends on your OpenChat server</small></span><span class="status">Available</span></div>
+          <div class="network-item"><span class="feature-icon" aria-hidden="true">BLE</span><span><strong>Bluetooth LE mesh</strong><small>Requires native BLE scanning, advertising, and relay support</small></span><span class="status planned">Not implemented</span></div>
+          <div class="network-item"><span class="feature-icon" aria-hidden="true">NOSTR</span><span><strong>Nostr and location channels</strong><small>Decentralized internet transport and geohash-based rooms</small></span><span class="status planned">Not implemented</span></div>
+          <div class="network-item"><span class="feature-icon" aria-hidden="true">WIFI</span><span><strong>Wi-Fi Direct / offline Wi-Fi mesh</strong><small>Not listed as a BitChat transport; native platform research required</small></span><span class="status planned">Research</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap section" aria-labelledby="privacyTitle">
+      <div class="privacy-band">
+        <div><p class="kicker">Read the fine print</p><h2 id="privacyTitle">Peer-to-peer is not the same as end-to-end verified.</h2><p>WebRTC protects data in transit, but OpenChat has no cryptographically authenticated identity protocol. Local browser history is not encrypted at rest. Review the security notes before using it, especially for sensitive conversations.</p></div>
+        <a class="button secondary" href="https://github.com/thecathousemp3/OpenChat/blob/main/SECURITY.md">Security notes</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap footer">
+    <span>OpenChat. Independent experimental project.</span>
+    <nav class="footer-links" aria-label="Footer navigation">
+      <a href="https://github.com/thecathousemp3/OpenChat/blob/main/README.md">Documentation</a>
+      <a href="https://github.com/thecathousemp3/OpenChat/blob/main/FEATURES.md">Feature tracker</a>
+      <a href="https://github.com/thecathousemp3/OpenChat/blob/main/CHANGELOG.md">Changelog</a>
+    </nav>
+  </footer>
+</body>
+</html>
