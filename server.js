@@ -6,6 +6,11 @@ const { WebSocket, WebSocketServer } = require("ws");
 
 const host = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT || 3000);
+const heartbeatIntervalMs = Number(process.env.WS_HEARTBEAT_INTERVAL_MS || 30000);
+if (!Number.isSafeInteger(heartbeatIntervalMs) || heartbeatIntervalMs < 100 || heartbeatIntervalMs > 300000) {
+  throw new Error("WS_HEARTBEAT_INTERVAL_MS must be an integer between 100 and 300000.");
+}
+const iceServers = parseIceServers(process.env.ICE_SERVERS);
 const rooms = new Map([["Global Chat", new Set()]]);
 const roomNames = new Map([["global chat", "Global Chat"]]);
 const staticAssets = new Map([
@@ -18,7 +23,11 @@ function send(socket, payload) {
 }
 
 function sendRoomList(socket) {
-  send(socket, { type: "room-list", rooms: [...rooms.keys()] });
+  send(socket, {
+    type: "room-list",
+    rooms: [...rooms.keys()],
+    roomCounts: Object.fromEntries([...rooms].map(([room, members]) => [room, members.size]))
+  });
 }
 
 function broadcastRoomList() {
@@ -27,6 +36,34 @@ function broadcastRoomList() {
 
 function reportError(socket, message) {
   send(socket, { type: "error", message });
+}
+
+function parseIceServers(value) {
+  if (!value) return [];
+  let servers;
+  try {
+    servers = JSON.parse(value);
+  } catch (error) {
+    throw new Error(`ICE_SERVERS must contain valid JSON: ${error.message}`);
+  }
+  if (!Array.isArray(servers) || servers.length > 10) {
+    throw new Error("ICE_SERVERS must be an array containing no more than 10 ICE server entries.");
+  }
+  for (const server of servers) {
+    const urls = Array.isArray(server?.urls) ? server.urls : [server?.urls];
+    if (
+      !server ||
+      typeof server !== "object" ||
+      urls.length === 0 ||
+      urls.length > 10 ||
+      urls.some((url) => typeof url !== "string" || url.length > 2048 || !/^(stun|stuns|turn|turns):/i.test(url)) ||
+      (server.username !== undefined && (typeof server.username !== "string" || server.username.length > 512)) ||
+      (server.credential !== undefined && (typeof server.credential !== "string" || server.credential.length > 512))
+    ) {
+      throw new Error("ICE_SERVERS contains an invalid entry. Each entry needs valid STUN or TURN URLs and optional string credentials.");
+    }
+  }
+  return servers;
 }
 
 function validRoomName(value) {
@@ -66,6 +103,16 @@ const server = http.createServer((request, response) => {
   if (request.method === "GET" && pathname === "/healthz") {
     response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
     response.end("ok");
+    return;
+  }
+  if (request.method === "GET" && pathname === "/config.json") {
+    response.writeHead(200, {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+      "referrer-policy": "no-referrer"
+    });
+    response.end(JSON.stringify({ iceServers }));
     return;
   }
   const asset = staticAssets.get(pathname);
@@ -124,11 +171,15 @@ const webSockets = new WebSocketServer({
 });
 
 webSockets.on("connection", (socket) => {
+  socket.isAlive = true;
   socket.id = randomUUID();
   socket.room = null;
   socket.identity = null;
   socket.windowStartedAt = Date.now();
   socket.messageCount = 0;
+  socket.on("pong", () => {
+    socket.isAlive = true;
+  });
   sendRoomList(socket);
 
   socket.on("message", (data) => {
@@ -139,7 +190,9 @@ webSockets.on("connection", (socket) => {
     }
     socket.messageCount += 1;
     if (socket.messageCount > 40) {
-      reportError(socket, "Too many requests. Pause briefly and try again.");
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.close(1008, "Too many requests. Pause briefly and try again.");
+      }
       return;
     }
 
@@ -219,6 +272,7 @@ webSockets.on("connection", (socket) => {
           peer: { id: socket.id, ...socket.identity }
         });
       }
+      broadcastRoomList();
       return;
     }
 
@@ -290,9 +344,26 @@ webSockets.on("connection", (socket) => {
     reportError(socket, "That request type is not supported.");
   });
 
-  socket.on("close", () => removeFromCurrentRoom(socket));
+  socket.on("close", () => {
+    const wasInRoom = Boolean(socket.room);
+    removeFromCurrentRoom(socket);
+    if (wasInRoom) broadcastRoomList();
+  });
   socket.on("error", (error) => console.error("WebSocket connection error:", error.message));
 });
+
+const heartbeat = setInterval(() => {
+  for (const socket of webSockets.clients) {
+    if (socket.readyState !== WebSocket.OPEN) continue;
+    if (socket.isAlive === false) {
+      socket.terminate();
+      continue;
+    }
+    socket.isAlive = false;
+    socket.ping();
+  }
+}, heartbeatIntervalMs);
+heartbeat.unref();
 
 server.listen(port, host, () => {
   console.log(`OpenChat server listening on http://localhost:${port}`);

@@ -301,6 +301,7 @@
     .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 3px; }
     .modal-actions button { padding: 9px 13px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); font-size: 11px; cursor: pointer; }
     .modal-actions .primary { border-color: #888; color: #fff; background: linear-gradient(180deg, #555, #333); }
+    .modal-actions .danger { border-color: #744; color: #fff; background: #482626; }
     .connection-choices { display: flex; flex-wrap: wrap; gap: 9px; }
     .connection-choices button { padding: 10px 13px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); font-size: 11px; cursor: pointer; }
     .connection-choices button.primary { border-color: #888; color: #fff; background: linear-gradient(180deg, #555, #333); }
@@ -416,6 +417,7 @@
             <button class="sidebar-action" id="editNameButton" type="button" aria-label="Edit profile name" title="Edit profile name"><span class="sidebar-icon" aria-hidden="true">E</span><span>Edit name</span></button>
             <button class="sidebar-action" id="regenerateCodeButton" type="button" aria-label="Generate new invite code" title="Generate new invite code"><span class="sidebar-icon" aria-hidden="true">N</span><span>New invite code</span></button>
           </div>
+          <button class="sidebar-action" id="settingsButton" type="button" aria-haspopup="dialog" aria-controls="settingsBackdrop"><span class="sidebar-icon" aria-hidden="true">S</span><span>Settings</span></button>
           <input id="profileFileInput" type="file" accept=".openchat,application/json" hidden>
           <input id="avatarFileInput" type="file" accept="image/*" hidden>
         </div>
@@ -502,12 +504,24 @@
   <div class="modal-backdrop" id="aboutConnectionBackdrop" hidden>
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="aboutConnectionTitle">
       <h2 id="aboutConnectionTitle">About WebRTC and privacy</h2>
-      <p>Shared-room messages travel directly between browsers over WebRTC data channels. Browsers use DTLS to encrypt data in transit, and room message text is not relayed through the OpenChat server.</p>
+      <p>Shared-room messages travel directly between browsers over WebRTC data channels. Browsers use DTLS to encrypt data in transit, and room message text is not relayed through the OpenChat server. Room counts show current signaling connections, not a global directory of OpenChat servers.</p>
       <p>The server still handles room membership and relays peer connection offers and answers. It also receives display names, profile pictures, and invite codes. Peer identity is not cryptographically verified; a malicious or compromised signaling server could interfere with connection setup. OpenChat has not had an independent security review.</p>
-      <p>Rooms connect each participant directly to every other participant, with no fixed participant cap. The number of peer connections grows quickly as rooms grow, and large rooms may overwhelm devices or networks. No STUN or TURN servers are configured, so some network setups cannot connect. WebRTC can disclose network addresses to other participants and signaling infrastructure.</p>
+      <p>Rooms connect each participant directly to every other participant, with no fixed participant cap. The number of peer connections grows quickly as rooms grow, and large rooms may overwhelm devices or networks. This instance may configure STUN and TURN services to improve connectivity; TURN credentials are provided to browsers and should be temporary. WebRTC can disclose network addresses to other participants and signaling infrastructure.</p>
       <p>Direct messages also use WebRTC. The offer and answer must be copied between contacts manually, and friend codes should be compared using a separate trusted channel.</p>
       <p>Messages cached by this browser are stored in local storage without encryption. For sensitive conversations, use an independently reviewed messaging application.</p>
       <div class="modal-actions"><button id="closeAboutConnection" type="button">Close</button></div>
+    </section>
+  </div>
+  <div class="modal-backdrop" id="settingsBackdrop" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <h2 id="settingsTitle">Settings</h2>
+      <p id="settingsServerStatus">Checking this server…</p>
+      <p id="settingsRoomStatus">Room occupancy will appear when connected.</p>
+      <p>Profile, contacts, and conversation history are stored in this browser’s local storage without encryption. Clearing OpenChat data removes them from this browser; export a profile first if you may want to restore it. This does not clear unrelated browser data or exported profile files.</p>
+      <div class="modal-actions">
+        <button id="closeSettings" type="button">Close</button>
+        <button class="danger" id="clearCacheButton" type="button">Clear cache and local data</button>
+      </div>
     </section>
   </div>
   <div class="toast" id="toast" role="status" hidden></div>
@@ -539,10 +553,36 @@
     let roomJoined = false;
     let joinedRoom = null;
     let roomPeerId = null;
+    let roomCounts = {};
     const roomPeers = new Map();
     const roomMembers = new Map();
     let sharedRooms = ["Global Chat"];
     let activeView = "room";
+    let configuredIceServers = [];
+    let iceConfigurationError = null;
+    const iceConfigurationReady = fetch("/config.json", { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Server returned ${response.status}.`);
+        return response.json();
+      })
+      .then((configuration) => {
+        if (!configuration || !Array.isArray(configuration.iceServers)) {
+          throw new Error("The server returned an invalid WebRTC configuration.");
+        }
+        configuredIceServers = configuration.iceServers;
+      })
+      .catch((error) => {
+        iceConfigurationError = error;
+        showToast(`Could not load WebRTC server configuration: ${error.message}`);
+      });
+
+    async function getIceServers() {
+      await iceConfigurationReady;
+      if (iceConfigurationError) {
+        throw new Error("Could not load WebRTC server configuration. Reconnect and try again.");
+      }
+      return configuredIceServers;
+    }
 
     function createFriendCode(excludedCodes = []) {
       const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -1076,11 +1116,20 @@
     function updateRoomStatus() {
       if (activeView === "room") {
         const connectedPeers = [...roomPeers.values()].filter((peer) => peer.channel?.readyState === "open").length;
-        document.getElementById("connectionLabel").textContent = roomJoined
-          ? roomMembers.size ? `WebRTC ${connectedPeers}/${roomMembers.size} connected` : "Waiting for peers"
-          : "";
-        document.getElementById("statusIndicator").classList.toggle("online", roomJoined);
+        const serverConnected = roomSocket?.readyState === WebSocket.OPEN;
+        document.getElementById("connectionLabel").textContent = !serverConnected
+          ? roomSocket ? "Server offline · reconnecting" : "Connecting to server"
+          : roomJoined
+            ? `Server online · ${roomMembers.size + 1} here · WebRTC ${connectedPeers}/${roomMembers.size}`
+            : "Server online · joining room";
+        document.getElementById("statusIndicator").classList.toggle("online", serverConnected);
       }
+      const serverConnected = roomSocket?.readyState === WebSocket.OPEN;
+      document.getElementById("settingsServerStatus").textContent =
+        `${serverConnected ? "Connected" : roomSocket ? "Disconnected · reconnecting" : "Connecting"} to ${location.host}`;
+      const roomCount = Object.values(roomCounts).reduce((total, count) => total + count, 0);
+      document.getElementById("settingsRoomStatus").textContent =
+        `${sharedRooms.length} rooms · ${roomCount} active room memberships on this server`;
     }
 
     function closeRoomMesh() {
@@ -1127,12 +1176,17 @@
       joinActiveRoom();
     }
 
-    function renderRoomList(rooms) {
+    function renderRoomList(rooms, counts = {}) {
+      const safeCounts = counts && typeof counts === "object" ? counts : {};
       const validRooms = rooms.filter((room) =>
         typeof room === "string" && room.length > 0 && room.length <= 32
       );
       if (!validRooms.includes("Global Chat")) validRooms.unshift("Global Chat");
       sharedRooms = [...new Set(validRooms)];
+      roomCounts = Object.fromEntries(sharedRooms.map((room) => [
+        room,
+        Number.isSafeInteger(safeCounts[room]) && safeCounts[room] >= 0 ? safeCounts[room] : 0
+      ]));
       const list = document.getElementById("roomList");
       list.replaceChildren();
       for (const room of sharedRooms) {
@@ -1140,9 +1194,14 @@
         button.type = "button";
         button.dataset.room = room;
         button.dataset.icon = "#";
-        button.append(createElement("span", "nav-icon", button.dataset.icon), createElement("span", "", room));
+        button.append(
+          createElement("span", "nav-icon", button.dataset.icon),
+          createElement("span", "", room),
+          createElement("span", "nav-count", String(roomCounts[room]))
+        );
         list.append(button);
       }
+      updateRoomStatus();
       if (activeView === "room" && !sharedRooms.includes(activeRoom)) selectRoom("Global Chat");
     }
 
@@ -1164,7 +1223,7 @@
       return roomPeerId < member.id;
     }
 
-    function addRoomMember(member) {
+    async function addRoomMember(member) {
       if (!validRoomMember(member) || roomMembers.has(member.id)) return;
       roomMembers.set(member.id, member);
       if (!("RTCPeerConnection" in window)) {
@@ -1172,33 +1231,40 @@
         updateRoomStatus();
         return;
       }
-      const peer = {
-        ...member,
-        room: joinedRoom,
-        connection: new RTCPeerConnection({ iceServers: [] }),
-        channel: null,
-        intentionalClose: false
-      };
-      roomPeers.set(peer.id, peer);
-      peer.connection.ondatachannel = (event) => {
-        if (event.channel.label !== "openchat-room") {
-          event.channel.close();
-          return;
-        }
-        attachRoomDataChannel(peer, event.channel);
-      };
-      peer.connection.onconnectionstatechange = () => {
-        updateRoomStatus();
-        if (peer.connection.connectionState === "failed" && !peer.intentionalClose) {
-          showToast(`Could not connect directly to ${peer.name}. Their network may block peer-to-peer connections.`);
-        }
-        if (peer.connection.connectionState === "closed" && !peer.intentionalClose) {
-          roomPeers.delete(peer.id);
+      try {
+        const iceServers = await getIceServers();
+        if (roomMembers.get(member.id) !== member || !roomJoined) return;
+        const peer = {
+          ...member,
+          room: joinedRoom,
+          connection: new RTCPeerConnection({ iceServers }),
+          channel: null,
+          intentionalClose: false
+        };
+        roomPeers.set(peer.id, peer);
+        peer.connection.ondatachannel = (event) => {
+          if (event.channel.label !== "openchat-room") {
+            event.channel.close();
+            return;
+          }
+          attachRoomDataChannel(peer, event.channel);
+        };
+        peer.connection.onconnectionstatechange = () => {
           updateRoomStatus();
-        }
-      };
-      if (shouldInitiateRoomPeer(peer)) void createRoomOffer(peer);
-      updateRoomStatus();
+          if (peer.connection.connectionState === "failed" && !peer.intentionalClose) {
+            showToast(`Could not connect directly to ${peer.name}. Their network may block peer-to-peer connections.`);
+          }
+          if (peer.connection.connectionState === "closed" && !peer.intentionalClose) {
+            roomPeers.delete(peer.id);
+            updateRoomStatus();
+          }
+        };
+        if (shouldInitiateRoomPeer(peer)) void createRoomOffer(peer);
+        updateRoomStatus();
+      } catch (error) {
+        showToast(error.message || `Could not connect to ${member.name}.`);
+        updateRoomStatus();
+      }
     }
 
     async function sendRoomSignal(peer, description) {
@@ -1315,7 +1381,7 @@
       }
       if (!payload || typeof payload !== "object") return;
       if (payload.type === "room-list" && Array.isArray(payload.rooms)) {
-        renderRoomList(payload.rooms);
+        renderRoomList(payload.rooms, payload.roomCounts || {});
         return;
       }
       if (payload.type === "room-created" && typeof payload.room === "string") {
@@ -1328,7 +1394,7 @@
         roomJoined = true;
         roomPeerId = payload.peerId;
         if (Array.isArray(payload.peers)) {
-          for (const peer of payload.peers) addRoomMember(peer);
+          for (const peer of payload.peers) void addRoomMember(peer);
         }
         updateRoomStatus();
         return;
@@ -1337,7 +1403,7 @@
         payload.type === "room-peer-joined" &&
         payload.room === joinedRoom
       ) {
-        addRoomMember(payload.peer);
+        void addRoomMember(payload.peer);
         return;
       }
       if (payload.type === "room-peer-left" && payload.room === joinedRoom) {
@@ -1575,9 +1641,9 @@
       channel.onerror = () => showToast(`The data channel with ${peer.name} encountered an error.`);
     }
 
-    function createPeerConnection(expectedCode) {
+    async function createPeerConnection(expectedCode) {
       if (!("RTCPeerConnection" in window)) throw new Error("This browser does not support WebRTC peer connections.");
-      const connection = new RTCPeerConnection({ iceServers: [] });
+      const connection = new RTCPeerConnection({ iceServers: await getIceServers() });
       const peer = {
         id: crypto.randomUUID(),
         connection,
@@ -1670,7 +1736,7 @@
           showToast("That’s your own friend code. Enter someone else’s code.");
           return;
         }
-        const peer = createPeerConnection(expectedCode);
+        const peer = await createPeerConnection(expectedCode);
         pendingConnection = peer;
         const channel = peer.connection.createDataChannel("openchat-chat", { ordered: true });
         attachDataChannel(peer, channel);
@@ -1701,7 +1767,7 @@
           return;
         }
         const description = parseSignal(signalText.value, "offer");
-        const peer = createPeerConnection(expectedCode);
+        const peer = await createPeerConnection(expectedCode);
         pendingConnection = peer;
         await peer.connection.setRemoteDescription(description);
         const answer = await peer.connection.createAnswer();
@@ -2048,6 +2114,7 @@
         if (!modalBackdrop.hidden) closeModal();
         if (!profileBackdrop.hidden) closeProfileDialog();
         document.getElementById("aboutConnectionBackdrop").hidden = true;
+        document.getElementById("settingsBackdrop").hidden = true;
       }
     });
     document.getElementById("aboutConnectionButton").addEventListener("click", () => {
@@ -2057,6 +2124,30 @@
     document.getElementById("closeAboutConnection").addEventListener("click", () => {
       document.getElementById("aboutConnectionBackdrop").hidden = true;
       document.getElementById("aboutConnectionButton").focus();
+    });
+    document.getElementById("settingsButton").addEventListener("click", () => {
+      updateRoomStatus();
+      document.getElementById("settingsBackdrop").hidden = false;
+      document.getElementById("closeSettings").focus();
+    });
+    document.getElementById("closeSettings").addEventListener("click", () => {
+      document.getElementById("settingsBackdrop").hidden = true;
+      document.getElementById("settingsButton").focus();
+    });
+    document.getElementById("settingsBackdrop").addEventListener("click", (event) => {
+      if (event.target === event.currentTarget) {
+        event.currentTarget.hidden = true;
+        document.getElementById("settingsButton").focus();
+      }
+    });
+    document.getElementById("clearCacheButton").addEventListener("click", () => {
+      if (!window.confirm("Clear this browser’s OpenChat profile, contacts, and conversation history? Export a profile first if you may want to restore this data.")) return;
+      try {
+        localStorage.removeItem(storeKey);
+        location.reload();
+      } catch (error) {
+        showToast(`Could not clear OpenChat data: ${error.message}`);
+      }
     });
 
     updateIdentityDisplay();
