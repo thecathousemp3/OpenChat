@@ -4,12 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#111111">
-  <meta name="description" content="A self-hosted instant messenger with shared chat rooms, WebRTC direct messaging, and encrypted profile backups.">
+  <meta name="description" content="A self-hosted, text-only messenger. Browsers exchange room messages over WebRTC while a small Node.js server handles discovery and signaling.">
   <meta name="color-scheme" content="dark">
   <meta property="og:title" content="OpenChat | Self-hosted instant messenger">
-  <meta property="og:description" content="A desktop-inspired chat app with shared rooms, direct WebRTC messaging, and portable encrypted profile backups.">
+  <meta property="og:description" content="A self-hosted, text-only messenger. Browsers exchange room messages over WebRTC while a small Node.js server handles discovery and signaling.">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="https://raw.githubusercontent.com/thecathousemp3/OpenChat/main/assets/openchat-preview.svg">
+  <meta property="og:image" content="https://raw.githubusercontent.com/thecathousemp3/OpenChat/main/assets/openchat-desktop-v2.png">
+  <meta property="og:image:alt" content="OpenChat's dark desktop chat interface with a connected Global Chat room and plain-text messages">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <title>OpenChat | Self-hosted instant messenger</title>
   <style>
@@ -194,7 +195,8 @@
       font-size: 11px;
       cursor: pointer;
     }
-    .sidebar-icon { min-width: 12px; color: #ccc; font-size: 13px; text-align: center; }
+    .sidebar-icon { display: grid; width: 16px; min-width: 16px; height: 16px; place-items: center; color: #ccc; }
+    .sidebar-icon svg { display: block; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
     .sidebar-action:hover { border-color: #999; color: #fff; background: linear-gradient(180deg, #454545, #303030); }
 
     .chat-panel { display: grid; grid-template-rows: 69px minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
@@ -202,6 +204,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
       padding: 0 24px;
       border-bottom: 1px solid var(--line);
     }
@@ -235,6 +238,9 @@
     }
     .header-info:hover { border-color: #999; color: #fff; background: linear-gradient(180deg, #454545, #303030); }
     .header-info-mark { display: grid; width: 16px; height: 16px; place-items: center; border: 1px solid #888; border-radius: 50%; font-size: 10px; font-weight: 700; }
+    .header-tools { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .message-search { width: min(19vw, 210px); min-width: 90px; padding: 8px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); background: #191919; font-size: 10px; }
+    .search-result-count { color: var(--muted); font-size: 9px; white-space: nowrap; }
     .conversation { overflow-y: auto; padding: 22px 27px 16px; }
     .message { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 17px; }
     .message-avatar {
@@ -252,12 +258,25 @@
     .message-topline strong { font-size: 11px; }
     .message-topline time { color: #aaa; font-size: 9px; }
     .message-text { margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+    .message-reply { display: block; max-width: min(440px, 100%); margin: 0 0 7px; padding: 5px 8px; border: 0; border-left: 2px solid #888; color: #bbb; background: #ffffff0a; font-size: 10px; text-align: left; cursor: pointer; }
+    .message-reply strong { display: block; color: #eee; }
+    .message-reply span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .message-meta { display: flex; align-items: center; gap: 8px; margin-top: 5px; color: #aaa; font-size: 9px; }
+    .message.own .message-meta { justify-content: flex-end; }
+    .message-action { padding: 2px 5px; border: 1px solid #444; border-radius: 3px; color: #ddd; background: #222; font-size: 9px; cursor: pointer; }
+    .message-action:hover { border-color: #888; color: #fff; }
+    .empty-search { color: var(--muted); font-size: 11px; text-align: center; }
     .message-text .mention { color: #fff; text-decoration: underline; font-weight: 700; }
     .message.own { justify-content: flex-end; }
     .message.own .message-avatar { order: 2; background: #383838; }
     .message.own .message-body { text-align: right; }
     .message.own .message-topline { justify-content: flex-end; }
     .composer-wrap { padding: 13px 20px 15px; border-top: 1px solid var(--line); }
+    .reply-preview { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; padding: 7px 9px; border-left: 2px solid #888; color: #ccc; background: #ffffff0a; font-size: 10px; }
+    .reply-preview[hidden] { display: none; }
+    .reply-preview-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .typing-indicator { min-height: 14px; margin: 0 0 6px; color: var(--muted); font-size: 10px; }
+    .typing-indicator[hidden] { display: none; }
     .composer {
       display: flex;
       align-items: center;
@@ -300,6 +319,8 @@
     .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 3px; }
     .modal-actions button { padding: 9px 13px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); font-size: 11px; cursor: pointer; }
     .modal-actions .primary { border-color: #888; color: #fff; background: linear-gradient(180deg, #555, #333); }
+    .modal-actions .danger { border-color: #744; color: #fff; background: #482626; }
+    .settings-copy-code { width: 100%; margin: 0 0 16px; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); cursor: pointer; }
     .connection-choices { display: flex; flex-wrap: wrap; gap: 9px; }
     .connection-choices button { padding: 10px 13px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); font-size: 11px; cursor: pointer; }
     .connection-choices button.primary { border-color: #888; color: #fff; background: linear-gradient(180deg, #555, #333); }
@@ -310,6 +331,7 @@
     .signal-help { margin: 8px 0 12px !important; }
     .toast { position: fixed; right: 22px; bottom: 51px; z-index: 10; padding: 11px 15px; border: 1px solid #444; border-radius: 5px; color: #fff; background: #222; box-shadow: 0 10px 34px #0009; font-size: 11px; }
     .toast[hidden] { display: none; }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
     @media (max-width: 900px) {
       body { background-size: 14px 14px; }
       .app-shell { width: 100%; height: 100vh; height: 100dvh; min-height: 0; margin: 0; grid-template-rows: 43px minmax(0, 1fr) 30px; border: 0; border-radius: 0; }
@@ -321,11 +343,14 @@
       .nav-button, .contact-button { width: 43px; height: 41px; justify-content: center; padding: 0; }
       .contact-avatar { width: 31px; height: 31px; }
       .sidebar-actions { width: 100%; justify-items: center; }
-      .profile-actions { width: 100%; justify-items: center; }
+      .profile-actions { width: 100%; grid-template-columns: 1fr; justify-items: center; }
       .profile-actions .sidebar-action { width: 43px; }
       .sidebar-action { width: 43px; height: 37px; padding: 0; font-size: 14px; }
       .chat-header { padding: 0 12px; }
       .header-info { min-height: 30px; padding: 4px 7px; }
+      .header-tools { gap: 5px; }
+      .message-search { width: 110px; min-width: 70px; }
+      .search-result-count { display: none; }
       .conversation { padding: 19px 13px 13px; }
       .composer-wrap { padding: 11px 11px 12px; }
     }
@@ -514,14 +539,15 @@
         <div class="section-label" id="requestsHeading" hidden>Friend requests</div>
         <div class="request-list" id="requestList"></div>
         <div class="sidebar-actions">
-          <button class="sidebar-action" id="connectPeerButton" type="button"><span class="sidebar-icon" aria-hidden="true">+</span><span>Add a friend</span></button>
-          <button class="sidebar-action" id="createRoomButton" type="button"><span class="sidebar-icon" aria-hidden="true">#</span><span>Create a room</span></button>
+          <button class="sidebar-action" id="connectPeerButton" type="button" aria-label="Add a friend" title="Add a friend"><span class="sidebar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="4"></circle><path d="M2 21v-2a6 6 0 0 1 6-6h2a6 6 0 0 1 4 1.5"></path><path d="M19 8v6m-3-3h6"></path></svg></span><span>Add a friend</span></button>
+          <button class="sidebar-action" id="createRoomButton" type="button" aria-label="Create a room" title="Create a room"><span class="sidebar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"></path><path d="M12.5 8v6m-3-3h6"></path></svg></span><span>Create a room</span></button>
           <div class="profile-actions">
-            <button class="sidebar-action" id="saveProfileButton" type="button" aria-label="Save encrypted profile" title="Save encrypted profile"><span class="sidebar-icon" aria-hidden="true">S</span><span>Save profile</span></button>
-            <button class="sidebar-action" id="restoreProfileButton" type="button" aria-label="Restore profile" title="Restore profile"><span class="sidebar-icon" aria-hidden="true">R</span><span>Restore</span></button>
-            <button class="sidebar-action" id="editNameButton" type="button" aria-label="Edit profile name" title="Edit profile name"><span class="sidebar-icon" aria-hidden="true">E</span><span>Edit name</span></button>
-            <button class="sidebar-action" id="regenerateCodeButton" type="button" aria-label="Generate new invite code" title="Generate new invite code"><span class="sidebar-icon" aria-hidden="true">N</span><span>New invite code</span></button>
+            <button class="sidebar-action" id="saveProfileButton" type="button" aria-label="Save encrypted profile" title="Save encrypted profile"><span class="sidebar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h16"></path><path d="M12 16V4m-5 5 5-5 5 5"></path></svg></span><span>Save profile</span></button>
+            <button class="sidebar-action" id="restoreProfileButton" type="button" aria-label="Restore profile" title="Restore profile"><span class="sidebar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h16"></path><path d="M12 4v12m-5-5 5 5 5-5"></path></svg></span><span>Restore</span></button>
+            <button class="sidebar-action" id="editNameButton" type="button" aria-label="Edit profile name" title="Edit profile name"><span class="sidebar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m4 16.5-.8 4.3 4.3-.8L20 7.5 16.5 4 4 16.5Z"></path><path d="m14.5 6 3.5 3.5"></path></svg></span><span>Edit name</span></button>
+            <button class="sidebar-action" id="regenerateCodeButton" type="button" aria-label="Generate new invite code" title="Generate new invite code"><span class="sidebar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 7v5h-5"></path><path d="M4.7 9a7.5 7.5 0 0 1 12.7-2L20 12"></path><path d="M4 17v-5h5"></path><path d="M19.3 15a7.5 7.5 0 0 1-12.7 2L4 12"></path></svg></span><span>New invite code</span></button>
           </div>
+          <button class="sidebar-action" id="settingsButton" type="button" aria-label="Settings" title="Settings" aria-haspopup="dialog" aria-controls="settingsBackdrop"><span class="sidebar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"></path><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.5.9l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.5-.9l-1.7.7-1.4-2.4 1.4-1.1a7 7 0 0 1 0-1.8l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.5-.9l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.5.9l1.7-.7 1.4 2.4-1.4 1.1a7 7 0 0 1 0 1.8Z"></path></svg></span><span>Settings</span></button>
           <input id="profileFileInput" type="file" accept=".openchat,application/json" hidden>
           <input id="avatarFileInput" type="file" accept="image/*" hidden>
         </div>
@@ -532,20 +558,31 @@
             <div class="room-icon" id="roomIcon" aria-hidden="true">#</div>
             <div><h1 id="chatTitle">Global Chat</h1></div>
           </div>
-          <button class="header-info" id="aboutConnectionButton" type="button" aria-haspopup="dialog" aria-controls="aboutConnectionBackdrop" title="Learn about WebRTC and room privacy"><span class="header-info-mark" aria-hidden="true">i</span><span>About WebRTC</span></button>
+          <div class="header-tools">
+            <label class="visually-hidden" for="messageSearch">Search this conversation</label>
+            <input class="message-search" id="messageSearch" type="search" placeholder="Search messages" autocomplete="off">
+            <span class="search-result-count" id="searchResultCount" aria-live="polite"></span>
+            <button class="header-info" id="aboutConnectionButton" type="button" aria-haspopup="dialog" aria-controls="aboutConnectionBackdrop" title="Learn about WebRTC and room privacy"><span class="header-info-mark" aria-hidden="true">i</span><span>About WebRTC</span></button>
+          </div>
         </header>
         <div class="conversation" id="conversation" aria-live="polite">
         </div>
         <div class="composer-wrap">
+          <div class="typing-indicator" id="typingIndicator" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+          <div class="reply-preview" id="replyPreview" hidden>
+            <span class="reply-preview-text" id="replyPreviewText"></span>
+            <button class="message-action" id="cancelReplyButton" type="button">Cancel reply</button>
+          </div>
           <form class="composer" id="messageForm">
-            <input id="messageInput" type="text" maxlength="500" autocomplete="off" placeholder="Say something nice..." aria-label="Type a message">
+            <input id="messageInput" type="text" maxlength="500" autocomplete="off" placeholder="Text only (no links or images)..." aria-label="Type a plain-text message" aria-describedby="messageInputHelp">
+            <span class="visually-hidden" id="messageInputHelp">Messages are plain text. Links and images are not embedded.</span>
             <button class="send-button" type="submit" aria-label="Send message">GO</button>
           </form>
         </div>
       </section>
     </div>
     <footer class="statusbar">
-      <span class="statusbar-left"><span class="statusbar-dot" id="statusIndicator"></span><span id="connectionLabel"></span></span>
+      <span class="statusbar-left"><span class="statusbar-dot" id="statusIndicator" aria-hidden="true"></span><span id="connectionLabel" role="status" aria-live="polite" aria-atomic="true"></span></span>
     </footer>
   </main>
 
@@ -608,12 +645,26 @@
   <div class="modal-backdrop" id="aboutConnectionBackdrop" hidden>
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="aboutConnectionTitle">
       <h2 id="aboutConnectionTitle">About WebRTC and privacy</h2>
-      <p>Shared-room messages travel directly between browsers over WebRTC data channels. Browsers use DTLS to encrypt data in transit, and room message text is not relayed through the OpenChat server.</p>
+      <p>Shared-room messages travel directly between browsers over WebRTC data channels. Browsers use DTLS to encrypt data in transit, and room message text is not relayed through the OpenChat server. Room counts show current signaling connections, not a global directory of OpenChat servers.</p>
       <p>The server still handles room membership and relays peer connection offers and answers. It also receives display names, profile pictures, and invite codes. Peer identity is not cryptographically verified; a malicious or compromised signaling server could interfere with connection setup. OpenChat has not had an independent security review.</p>
-      <p>Rooms connect each participant directly to every other participant, with no fixed participant cap. The number of peer connections grows quickly as rooms grow, and large rooms may overwhelm devices or networks. No STUN or TURN servers are configured, so some network setups cannot connect. WebRTC can disclose network addresses to other participants and signaling infrastructure.</p>
-      <p>Direct messages also use WebRTC. The offer and answer must be copied between contacts manually, and friend codes should be compared using a separate trusted channel.</p>
+      <p>Rooms connect each participant directly to every other participant, with no fixed participant cap. The number of peer connections grows quickly as rooms grow, and large rooms may overwhelm devices or networks. The server operator may configure STUN or TURN servers; without them, some network setups cannot connect. TURN credentials are delivered to browsers and should be temporary. Shared-room peer connections retry ICE negotiation after a failure. WebRTC can disclose network addresses to other participants and infrastructure involved in connection setup.</p>
+      <p>Messages show direct peer delivery acknowledgements and can be retried for peers that have not confirmed receipt. Search and replies use only the conversation history cached in this browser. Direct messages also use WebRTC; their offer and answer must be copied between contacts manually, and friend codes should be compared using a separate trusted channel.</p>
+      <p>Voice and video are not implemented. DTLS-SRTP transport encryption alone does not provide authenticated end-to-end identity; a key-verification protocol and independent security review would be needed before making that claim.</p>
       <p>Messages cached by this browser are stored in local storage without encryption. For sensitive conversations, use an independently reviewed messaging application.</p>
       <div class="modal-actions"><button id="closeAboutConnection" type="button">Close</button></div>
+    </section>
+  </div>
+  <div class="modal-backdrop" id="settingsBackdrop" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <h2 id="settingsTitle">Settings</h2>
+      <p id="settingsServerStatus">Checking this server...</p>
+      <p id="settingsRoomStatus">Room occupancy will appear when connected.</p>
+      <p>Profile, contacts, and conversation history are stored in this browser's local storage without encryption. Clearing OpenChat data removes them from this browser; export a profile first if you may want to restore it. This does not clear unrelated browser data or exported profile files.</p>
+      <button class="settings-copy-code" id="copyInviteCodeButton" type="button">Copy your friend code</button>
+      <div class="modal-actions">
+        <button id="closeSettings" type="button">Close</button>
+        <button class="danger" id="clearCacheButton" type="button">Clear cache and local data</button>
+      </div>
     </section>
   </div>
   <div class="toast" id="toast" role="status" hidden></div>
@@ -628,7 +679,13 @@
     const signalPanel = document.getElementById("signalPanel");
     const connectionChoices = document.getElementById("connectionChoices");
     const toast = document.getElementById("toast");
+    const messageSearch = document.getElementById("messageSearch");
+    const searchResultCount = document.getElementById("searchResultCount");
+    const replyPreview = document.getElementById("replyPreview");
+    const replyPreviewText = document.getElementById("replyPreviewText");
     const peers = new Map();
+    const iceServers = [];
+    let iceServersReady = Promise.resolve();
     let toastTimer;
     let activeRoom = "Global Chat";
     let activePeerId = null;
@@ -645,10 +702,149 @@
     let roomJoined = false;
     let joinedRoom = null;
     let roomPeerId = null;
+    let roomCounts = {};
     const roomPeers = new Map();
     const roomMembers = new Map();
     let sharedRooms = ["Global Chat"];
     let activeView = "room";
+    let pendingReply = null;
+    let dialogReturnFocus = null;
+    let localRoomTyping = false;
+    let lastRoomTypingSentAt = 0;
+    let localRoomTypingTimer = null;
+    const roomTypingPeers = new Map();
+    const dialogFocusableSelector = [
+      "a[href]",
+      "button:not([disabled])",
+      "input:not([disabled]):not([type='hidden'])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
+      "[tabindex]:not([tabindex='-1'])"
+    ].join(",");
+
+    function currentDialogBackdrop() {
+      return [...document.querySelectorAll(".modal-backdrop")].reverse()
+        .find((backdrop) => !backdrop.hidden) || null;
+    }
+
+    function dialogFocusables(backdrop) {
+      return [...backdrop.querySelectorAll(dialogFocusableSelector)]
+        .filter((element) => element.getClientRects().length > 0);
+    }
+
+    function openDialog(backdrop, initialFocus) {
+      if (!currentDialogBackdrop()) dialogReturnFocus = document.activeElement;
+      backdrop.hidden = false;
+      const target = initialFocus || dialogFocusables(backdrop)[0];
+      target?.focus();
+    }
+
+    function closeDialog(backdrop) {
+      backdrop.hidden = true;
+      if (currentDialogBackdrop()) return;
+      const returnFocus = dialogReturnFocus;
+      dialogReturnFocus = null;
+      if (returnFocus?.isConnected && !returnFocus.disabled) returnFocus.focus();
+    }
+
+    function trapDialogTab(event) {
+      const backdrop = currentDialogBackdrop();
+      if (!backdrop) return;
+      const focusables = dialogFocusables(backdrop);
+      if (!focusables.length) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !backdrop.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !backdrop.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    function renderTypingIndicator() {
+      const indicator = document.getElementById("typingIndicator");
+      const peersTyping = [...roomTypingPeers.values()].map(({ peer }) => peer.name);
+      if (activeView !== "room" || peersTyping.length === 0) {
+        indicator.hidden = true;
+        indicator.textContent = "";
+        return;
+      }
+      indicator.hidden = false;
+      indicator.textContent = peersTyping.length === 1
+        ? `${peersTyping[0]} is typing...`
+        : peersTyping.length === 2
+          ? `${peersTyping[0]} and ${peersTyping[1]} are typing...`
+          : "Several people are typing...";
+    }
+
+    function clearRoomPeerTyping(peerId) {
+      const typingPeer = roomTypingPeers.get(peerId);
+      if (typingPeer) clearTimeout(typingPeer.timeout);
+      roomTypingPeers.delete(peerId);
+      renderTypingIndicator();
+    }
+
+    function clearRoomTyping() {
+      for (const { timeout } of roomTypingPeers.values()) clearTimeout(timeout);
+      roomTypingPeers.clear();
+      renderTypingIndicator();
+    }
+
+    function updateRoomPeerTyping(peer, active) {
+      if (peer.room !== joinedRoom || activeView !== "room") return;
+      clearRoomPeerTyping(peer.id);
+      if (!active) return;
+      const typingPeer = {
+        peer,
+        timeout: setTimeout(() => {
+          roomTypingPeers.delete(peer.id);
+          renderTypingIndicator();
+        }, 5000)
+      };
+      roomTypingPeers.set(peer.id, typingPeer);
+      renderTypingIndicator();
+    }
+
+    function sendRoomTyping(active) {
+      if (!roomJoined || activeView !== "room" || !joinedRoom) return;
+      const payload = JSON.stringify({ type: "typing", room: joinedRoom, active });
+      for (const peer of roomPeers.values()) {
+        if (peer.room !== joinedRoom || peer.channel?.readyState !== "open") continue;
+        try {
+          peer.channel.send(payload);
+        } catch (error) {
+          showToast(`Could not update typing status for ${peer.name}: ${error.message}`);
+        }
+      }
+    }
+
+    function stopLocalRoomTyping() {
+      clearTimeout(localRoomTypingTimer);
+      localRoomTypingTimer = null;
+      if (!localRoomTyping) return;
+      localRoomTyping = false;
+      sendRoomTyping(false);
+    }
+
+    function updateLocalRoomTyping() {
+      if (activeView !== "room" || !document.getElementById("messageInput").value.trim()) {
+        stopLocalRoomTyping();
+        return;
+      }
+      const now = Date.now();
+      if (!localRoomTyping || now - lastRoomTypingSentAt >= 2000) {
+        sendRoomTyping(true);
+        localRoomTyping = true;
+        lastRoomTypingSentAt = now;
+      }
+      clearTimeout(localRoomTypingTimer);
+      localRoomTypingTimer = setTimeout(stopLocalRoomTyping, 2500);
+    }
 
     function createFriendCode(excludedCodes = []) {
       const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -678,6 +874,21 @@
       return typeof value === "string" &&
         value.length <= 6000 &&
         /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(value);
+    }
+
+    function ensureMessageIds(state) {
+      for (const histories of [state.messages, state.roomMessages]) {
+        if (!histories || typeof histories !== "object" || Array.isArray(histories)) continue;
+        for (const history of Object.values(histories)) {
+          if (!Array.isArray(history)) continue;
+          for (const message of history) {
+            if (message && typeof message === "object" && typeof message.id !== "string") {
+              message.id = crypto.randomUUID();
+            }
+          }
+        }
+      }
+      return state;
     }
 
     function loadState() {
@@ -718,7 +929,7 @@
         if (!parsed.roomMessages) {
           parsed.roomMessages = {};
         }
-        return parsed;
+        return ensureMessageIds(parsed);
       } catch (error) {
         showToast(`Could not load saved OpenChat data: ${error.message}`);
         return defaultState();
@@ -777,6 +988,24 @@
             typeof message.name === "string" && message.name.length <= 32 &&
             typeof message.text === "string" && message.text.length <= 500 &&
             typeof message.timestamp === "number" && Number.isFinite(message.timestamp) &&
+            (message.id === undefined || (typeof message.id === "string" && message.id.length <= 64)) &&
+            (message.replyTo === undefined || (
+              message.replyTo &&
+              typeof message.replyTo === "object" &&
+              typeof message.replyTo.id === "string" && message.replyTo.id.length <= 64 &&
+              typeof message.replyTo.name === "string" && message.replyTo.name.length <= 32 &&
+              typeof message.replyTo.text === "string" && message.replyTo.text.length <= 500
+            )) &&
+            (message.delivery === undefined || (
+              message.delivery &&
+              typeof message.delivery === "object" &&
+              Array.isArray(message.delivery.recipients) && message.delivery.recipients.length <= 10000 &&
+              message.delivery.recipients.every(validCode) &&
+              Array.isArray(message.delivery.delivered) && message.delivery.delivered.length <= 10000 &&
+              message.delivery.delivered.every(validCode) &&
+              Array.isArray(message.delivery.failed) && message.delivery.failed.length <= 10000 &&
+              message.delivery.failed.every(validCode)
+            )) &&
             (message.emoji === undefined || (typeof message.emoji === "string" && message.emoji.length <= 16)) &&
             (message.avatar === undefined || message.avatar === null || isValidAvatar(message.avatar))
           )
@@ -793,7 +1022,7 @@
         !validRequests(value.incomingRequests) || !validRequests(value.outgoingRequests) ||
         !validMessages(value.messages) || !validMessages(value.roomMessages)
       ) throw new Error("The profile data is invalid or unsupported.");
-      return value;
+      return ensureMessageIds(value);
     }
 
     function bytesToBase64(bytes) {
@@ -889,12 +1118,11 @@
       document.getElementById("profileConfirmWrap").hidden = !isExport;
       document.getElementById("profilePasswordConfirm").required = isExport;
       document.getElementById("confirmProfile").textContent = isExport ? "Save file" : "Restore profile";
-      profileBackdrop.hidden = false;
-      document.getElementById("profilePassword").focus();
+      openDialog(profileBackdrop, document.getElementById("profilePassword"));
     }
 
     function closeProfileDialog() {
-      profileBackdrop.hidden = true;
+      closeDialog(profileBackdrop);
       document.getElementById("profileForm").reset();
       profileAction = null;
       profileImportFile = null;
@@ -955,12 +1183,11 @@
       modalInput.placeholder = placeholder;
       modalInput.value = initialValue;
       modalAction = action;
-      modalBackdrop.hidden = false;
-      modalInput.focus();
+      openDialog(modalBackdrop, modalInput);
     }
 
     function closeModal() {
-      modalBackdrop.hidden = true;
+      closeDialog(modalBackdrop);
       modalAction = null;
     }
 
@@ -1121,6 +1348,8 @@
       const button = createElement("button", "contact-button");
       button.type = "button";
       button.dataset.peerCode = person.code;
+      button.setAttribute("aria-label", `${person.name}, ${detail}`);
+      button.title = `${person.name} - ${detail}`;
       const avatar = createElement("span", "contact-avatar");
       setAvatar(avatar, person.avatar, person.name.trim().slice(0, 1).toUpperCase() || "?");
       button.append(avatar);
@@ -1170,28 +1399,51 @@
     }
 
     function renderConversation(code) {
-      conversation.replaceChildren();
-      for (const message of appState.messages[code] || []) appendMessage(message);
+      renderMessageHistory(appState.messages[code] || []);
     }
 
     function renderRoomConversation(name) {
+      renderMessageHistory(appState.roomMessages[name] || []);
+    }
+
+    function renderMessageHistory(history) {
       conversation.replaceChildren();
-      for (const message of appState.roomMessages[name] || []) appendMessage(message);
+      const query = messageSearch.value.trim().toLocaleLowerCase();
+      const matching = history.filter((message) =>
+        !query || `${message.name} ${message.text} ${message.replyTo?.text || ""}`.toLocaleLowerCase().includes(query)
+      );
+      searchResultCount.textContent = query ? `${matching.length} result${matching.length === 1 ? "" : "s"}` : "";
+      for (const message of matching) appendMessage(message);
+      if (query && matching.length === 0) {
+        conversation.append(createElement("p", "empty-search", "No matching messages in this device's local history."));
+      }
     }
 
     function updateRoomStatus() {
       if (activeView === "room") {
         const connectedPeers = [...roomPeers.values()].filter((peer) => peer.channel?.readyState === "open").length;
-        document.getElementById("connectionLabel").textContent = roomJoined
-          ? roomMembers.size ? `WebRTC ${connectedPeers}/${roomMembers.size} connected` : "Waiting for peers"
-          : "";
-        document.getElementById("statusIndicator").classList.toggle("online", roomJoined);
+        const serverConnected = roomSocket?.readyState === WebSocket.OPEN;
+        document.getElementById("connectionLabel").textContent = !serverConnected
+          ? roomSocket ? "Server offline - reconnecting" : "Connecting to server"
+          : roomJoined
+            ? `Server online - ${roomMembers.size + 1} here - WebRTC ${connectedPeers}/${roomMembers.size} connected`
+            : "Server online - joining room";
+        document.getElementById("statusIndicator").classList.toggle("online", serverConnected);
       }
+      const serverConnected = roomSocket?.readyState === WebSocket.OPEN;
+      document.getElementById("settingsServerStatus").textContent =
+        `${serverConnected ? "Connected" : roomSocket ? "Disconnected - reconnecting" : "Connecting"} to ${location.host}`;
+      const roomCount = Object.values(roomCounts).reduce((total, count) => total + count, 0);
+      document.getElementById("settingsRoomStatus").textContent =
+        `${sharedRooms.length} rooms - ${roomCount} active room memberships on this server`;
     }
 
     function closeRoomMesh() {
+      stopLocalRoomTyping();
       for (const peer of roomPeers.values()) {
+        markPeerDeliveriesFailed(peer.code);
         peer.intentionalClose = true;
+        clearTimeout(peer.restartTimer);
         peer.channel?.close();
         peer.connection.close();
       }
@@ -1199,6 +1451,7 @@
       roomMembers.clear();
       joinedRoom = null;
       roomPeerId = null;
+      clearRoomTyping();
     }
 
     function joinActiveRoom() {
@@ -1220,6 +1473,7 @@
     function selectRoom(name) {
       activeView = "room";
       activePeerId = null;
+      setPendingReply(null);
       closeRoomMesh();
       roomJoined = false;
       activeRoom = name;
@@ -1233,12 +1487,17 @@
       joinActiveRoom();
     }
 
-    function renderRoomList(rooms) {
+    function renderRoomList(rooms, counts = {}) {
+      const safeCounts = counts && typeof counts === "object" ? counts : {};
       const validRooms = rooms.filter((room) =>
         typeof room === "string" && room.length > 0 && room.length <= 32
       );
       if (!validRooms.includes("Global Chat")) validRooms.unshift("Global Chat");
       sharedRooms = [...new Set(validRooms)];
+      roomCounts = Object.fromEntries(sharedRooms.map((room) => [
+        room,
+        Number.isSafeInteger(safeCounts[room]) && safeCounts[room] >= 0 ? safeCounts[room] : 0
+      ]));
       const list = document.getElementById("roomList");
       list.replaceChildren();
       for (const room of sharedRooms) {
@@ -1246,9 +1505,16 @@
         button.type = "button";
         button.dataset.room = room;
         button.dataset.icon = "#";
-        button.append(createElement("span", "nav-icon", button.dataset.icon), createElement("span", "", room));
+        button.setAttribute("aria-label", `${room}, ${roomCounts[room]} ${roomCounts[room] === 1 ? "participant" : "participants"}`);
+        button.title = `${room} - ${roomCounts[room]} ${roomCounts[room] === 1 ? "participant" : "participants"}`;
+        button.append(
+          createElement("span", "nav-icon", button.dataset.icon),
+          createElement("span", "", room),
+          createElement("span", "nav-count", String(roomCounts[room]))
+        );
         list.append(button);
       }
+      updateRoomStatus();
       if (activeView === "room" && !sharedRooms.includes(activeRoom)) selectRoom("Global Chat");
     }
 
@@ -1270,7 +1536,7 @@
       return roomPeerId < member.id;
     }
 
-    function addRoomMember(member) {
+    async function addRoomMember(member) {
       if (!validRoomMember(member) || roomMembers.has(member.id)) return;
       roomMembers.set(member.id, member);
       if (!("RTCPeerConnection" in window)) {
@@ -1278,33 +1544,126 @@
         updateRoomStatus();
         return;
       }
-      const peer = {
-        ...member,
-        room: joinedRoom,
-        connection: new RTCPeerConnection({ iceServers: [] }),
-        channel: null,
-        intentionalClose: false
-      };
-      roomPeers.set(peer.id, peer);
-      peer.connection.ondatachannel = (event) => {
-        if (event.channel.label !== "openchat-room") {
-          event.channel.close();
-          return;
-        }
-        attachRoomDataChannel(peer, event.channel);
-      };
-      peer.connection.onconnectionstatechange = () => {
-        updateRoomStatus();
-        if (peer.connection.connectionState === "failed" && !peer.intentionalClose) {
-          showToast(`Could not connect directly to ${peer.name}. Their network may block peer-to-peer connections.`);
-        }
-        if (peer.connection.connectionState === "closed" && !peer.intentionalClose) {
-          roomPeers.delete(peer.id);
+      try {
+        await iceServersReady;
+        if (roomMembers.get(member.id) !== member || !roomJoined) return;
+        const peer = {
+          ...member,
+          room: joinedRoom,
+          connection: new RTCPeerConnection({ iceServers }),
+          channel: null,
+          intentionalClose: false,
+          restartAttempts: 0,
+          restartTimer: null,
+          restartInProgress: false,
+          restartFailureReported: false
+        };
+        roomPeers.set(peer.id, peer);
+        peer.connection.ondatachannel = (event) => {
+          if (event.channel.label !== "openchat-room") {
+            event.channel.close();
+            return;
+          }
+          attachRoomDataChannel(peer, event.channel);
+        };
+        peer.connection.onconnectionstatechange = () => {
           updateRoomStatus();
+          if (peer.intentionalClose) return;
+          if (peer.connection.connectionState === "connected") {
+            peer.restartAttempts = 0;
+            peer.restartFailureReported = false;
+            clearTimeout(peer.restartTimer);
+            peer.restartTimer = null;
+            return;
+          }
+          if (peer.connection.connectionState === "failed") {
+            scheduleRoomIceRestart(peer);
+          } else if (peer.connection.connectionState === "disconnected") {
+            scheduleRoomIceRestart(peer, 5000);
+          } else if (peer.connection.connectionState === "closed") {
+            roomPeers.delete(peer.id);
+            updateRoomStatus();
+          }
+        };
+        if (shouldInitiateRoomPeer(peer)) void createRoomOffer(peer);
+        updateRoomStatus();
+      } catch (error) {
+        showToast(error.message || `Could not connect to ${member.name}.`);
+        updateRoomStatus();
+      }
+    }
+
+    function scheduleRoomIceRestart(peer, delay = 0) {
+      if (
+        peer.intentionalClose ||
+        !shouldInitiateRoomPeer(peer) ||
+        peer.restartFailureReported ||
+        peer.restartTimer ||
+        peer.restartInProgress
+      ) return;
+      if (peer.restartAttempts >= 3) {
+        showToast(`Could not reconnect to ${peer.name}. They may need to leave and rejoin the room.`);
+        return;
+      }
+      peer.restartTimer = setTimeout(() => {
+        peer.restartTimer = null;
+        void restartRoomIce(peer);
+      }, delay);
+    }
+
+    async function restartRoomIce(peer) {
+      if (
+        peer.intentionalClose ||
+        roomPeers.get(peer.id) !== peer ||
+        !roomJoined ||
+        peer.connection.connectionState === "connected"
+      ) return;
+      if (peer.connection.signalingState !== "stable") {
+        scheduleRoomIceRestart(peer, 1000);
+        return;
+      }
+
+      peer.restartInProgress = true;
+      peer.restartAttempts += 1;
+      try {
+        const offer = await peer.connection.createOffer({ iceRestart: true });
+        await peer.connection.setLocalDescription(offer);
+        await waitForIceGathering(peer.connection);
+        if (roomPeers.get(peer.id) === peer && !peer.intentionalClose) {
+          await sendRoomSignal(peer, peer.connection.localDescription);
         }
-      };
-      if (shouldInitiateRoomPeer(peer)) void createRoomOffer(peer);
-      updateRoomStatus();
+      } catch (error) {
+        if (roomPeers.get(peer.id) === peer && !peer.intentionalClose) {
+          showToast(error.message || `Could not reconnect to ${peer.name}.`);
+        }
+      } finally {
+        peer.restartInProgress = false;
+        if (
+          roomPeers.get(peer.id) === peer &&
+          !peer.intentionalClose &&
+          peer.connection.connectionState !== "connected" &&
+          peer.restartAttempts < 3
+        ) {
+          scheduleRoomIceRestart(peer, 10000);
+        } else if (
+          roomPeers.get(peer.id) === peer &&
+          !peer.intentionalClose &&
+          peer.connection.connectionState !== "connected" &&
+          peer.restartAttempts >= 3
+        ) {
+          peer.restartTimer = setTimeout(() => {
+            peer.restartTimer = null;
+            if (
+              roomPeers.get(peer.id) === peer &&
+              peer.connection.connectionState !== "connected" &&
+              !peer.intentionalClose
+            ) {
+              peer.restartFailureReported = true;
+              showToast(`Could not reconnect to ${peer.name}. They may need to leave and rejoin the room.`);
+            }
+          }, 10000);
+        }
+      }
     }
 
     async function sendRoomSignal(peer, description) {
@@ -1352,7 +1711,7 @@
       if (!peer) return;
       try {
         if (payload.signal.type === "offer") {
-          if (shouldInitiateRoomPeer(peer) || peer.connection.remoteDescription) return;
+          if (shouldInitiateRoomPeer(peer) || peer.connection.signalingState !== "stable") return;
           await peer.connection.setRemoteDescription(payload.signal);
           const answer = await peer.connection.createAnswer();
           await peer.connection.setLocalDescription(answer);
@@ -1373,22 +1732,43 @@
         roomPeers.get(peer.id) !== peer ||
         typeof payload.text !== "string" ||
         !payload.text.trim() ||
-        payload.text.length > 500
+        payload.text.length > 500 ||
+        (payload.id !== undefined && (typeof payload.id !== "string" || payload.id.length > 64)) ||
+        (payload.replyTo !== undefined && payload.replyTo !== null && (
+          typeof payload.replyTo.id !== "string" ||
+          typeof payload.replyTo.name !== "string" ||
+          typeof payload.replyTo.text !== "string" ||
+          payload.replyTo.id.length > 64 ||
+          payload.replyTo.name.length > 32 ||
+          payload.replyTo.text.length > 500
+        ))
       ) return;
-      const message = {
-        code: peer.code,
-        name: peer.name,
-        emoji: "?",
-        avatar: peer.avatar,
-        text: payload.text,
-        own: false,
-        timestamp: Number.isFinite(payload.timestamp) ? payload.timestamp : Date.now()
-      };
       const history = appState.roomMessages[peer.room] || (appState.roomMessages[peer.room] = []);
-      history.push(message);
-      if (history.length > 300) history.splice(0, history.length - 300);
-      saveState();
-      if (activeView === "room" && activeRoom === peer.room) appendMessage(message);
+      const isDuplicate = payload.id && history.some((entry) => entry.id === payload.id);
+      if (!isDuplicate) {
+        const message = {
+          id: payload.id,
+          replyTo: payload.replyTo,
+          code: peer.code,
+          name: peer.name,
+          emoji: "?",
+          avatar: peer.avatar,
+          text: payload.text,
+          own: false,
+          timestamp: Number.isFinite(payload.timestamp) ? payload.timestamp : Date.now()
+        };
+        history.push(message);
+        if (history.length > 300) history.splice(0, history.length - 300);
+        saveState();
+        if (activeView === "room" && activeRoom === peer.room) renderRoomConversation(peer.room);
+      }
+      if (typeof payload.id === "string" && payload.id.length > 0 && peer.channel?.readyState === "open") {
+        try {
+          peer.channel.send(JSON.stringify({ type: "message-ack", id: payload.id, code: appState.identity.code }));
+        } catch (error) {
+          showToast(`Could not confirm delivery to ${peer.name}: ${error.message}`);
+        }
+      }
     }
 
     function attachRoomDataChannel(peer, channel) {
@@ -1405,9 +1785,26 @@
         }
         if (payload?.type === "room-message" && payload.room === peer.room) {
           addRoomMessage(peer, payload);
+        } else if (
+          payload?.type === "typing" &&
+          payload.room === peer.room &&
+          typeof payload.active === "boolean"
+        ) {
+          updateRoomPeerTyping(peer, payload.active);
+        } else if (
+          payload?.type === "message-ack" &&
+          typeof payload.id === "string" &&
+          typeof payload.code === "string" &&
+          peer.code === payload.code
+        ) {
+          updateMessageDelivery(payload.id, payload.code);
         }
       };
-      channel.onclose = updateRoomStatus;
+      channel.onclose = () => {
+        clearRoomPeerTyping(peer.id);
+        markPeerDeliveriesFailed(peer.code);
+        updateRoomStatus();
+      };
       channel.onerror = () => showToast(`The encrypted room connection to ${peer.name} encountered an error.`);
     }
 
@@ -1421,7 +1818,7 @@
       }
       if (!payload || typeof payload !== "object") return;
       if (payload.type === "room-list" && Array.isArray(payload.rooms)) {
-        renderRoomList(payload.rooms);
+        renderRoomList(payload.rooms, payload.roomCounts || {});
         return;
       }
       if (payload.type === "room-created" && typeof payload.room === "string") {
@@ -1434,7 +1831,7 @@
         roomJoined = true;
         roomPeerId = payload.peerId;
         if (Array.isArray(payload.peers)) {
-          for (const peer of payload.peers) addRoomMember(peer);
+          for (const peer of payload.peers) void addRoomMember(peer);
         }
         updateRoomStatus();
         return;
@@ -1443,14 +1840,17 @@
         payload.type === "room-peer-joined" &&
         payload.room === joinedRoom
       ) {
-        addRoomMember(payload.peer);
+        void addRoomMember(payload.peer);
         return;
       }
       if (payload.type === "room-peer-left" && payload.room === joinedRoom) {
+        clearRoomPeerTyping(payload.peerId);
         roomMembers.delete(payload.peerId);
         const peer = roomPeers.get(payload.peerId);
         if (peer) {
+          markPeerDeliveriesFailed(peer.code);
           peer.intentionalClose = true;
+          clearTimeout(peer.restartTimer);
           roomPeers.delete(payload.peerId);
           peer.channel?.close();
           peer.connection.close();
@@ -1523,8 +1923,11 @@
     }
 
     function selectPeer(peer) {
+      stopLocalRoomTyping();
+      clearRoomTyping();
       activeView = "peer";
       activePeerId = peer.id;
+      setPendingReply(null);
       document.querySelectorAll(".nav-button").forEach((item) => item.classList.remove("active"));
       document.getElementById("chatTitle").textContent = peer.name;
       setAvatar(document.getElementById("roomIcon"), peer.avatar, peer.name.trim().slice(0, 1).toUpperCase() || "?");
@@ -1533,8 +1936,21 @@
       renderConversation(peer.code);
     }
 
-    function appendMessage({ name, emoji, avatar: profileImage, text, own = false, timestamp = Date.now() }) {
+    function deliveryText(message) {
+      const delivery = message.delivery;
+      if (!message.own || !delivery) return "";
+      const total = delivery.recipients.length;
+      const delivered = delivery.delivered.length;
+      if (total > 0 && delivered >= total) return "Delivered";
+      if (delivered > 0) return `Delivered to ${delivered} of ${total}`;
+      if (delivery.failed.length > 0) return "Not delivered to everyone";
+      return "Sent - waiting for delivery";
+    }
+
+    function appendMessage(message) {
+      const { name, avatar: profileImage, text, own = false, timestamp = Date.now(), replyTo } = message;
       const article = createElement("article", `message${own ? " own" : ""}`);
+      if (typeof message.id === "string") article.dataset.messageId = message.id;
       const avatar = createElement("div", "message-avatar");
       setAvatar(avatar, profileImage, name.trim().slice(0, 1).toUpperCase() || "?");
       avatar.setAttribute("aria-hidden", "true");
@@ -1544,7 +1960,34 @@
       const time = createElement("time", "", new Intl.DateTimeFormat([], { hour: "numeric", minute: "2-digit" }).format(new Date(timestamp)));
       const messageText = createElement("p", "message-text", text);
       topline.append(author, time);
-      body.append(topline, messageText);
+      body.append(topline);
+      if (replyTo && typeof replyTo.id === "string") {
+        const quoted = createElement("button", "message-reply");
+        quoted.type = "button";
+        quoted.dataset.replyTarget = replyTo.id;
+        quoted.append(
+          createElement("strong", "", replyTo.name),
+          createElement("span", "", replyTo.text)
+        );
+        body.append(quoted);
+      }
+      body.append(messageText);
+      const meta = createElement("div", "message-meta");
+      if (typeof message.id === "string") {
+        const replyButton = createElement("button", "message-action", "Reply");
+        replyButton.type = "button";
+        replyButton.dataset.replyTo = message.id;
+        meta.append(replyButton);
+      }
+      const status = deliveryText(message);
+      if (status) meta.append(createElement("span", "delivery-status", status));
+      if (own && message.delivery && message.delivery.delivered.length < message.delivery.recipients.length) {
+        const retry = createElement("button", "message-action", "Retry");
+        retry.type = "button";
+        retry.dataset.retryMessage = message.id;
+        meta.append(retry);
+      }
+      if (meta.childElementCount) body.append(meta);
       article.append(avatar, body);
       conversation.append(article);
       conversation.scrollTop = conversation.scrollHeight;
@@ -1556,10 +1999,124 @@
         return;
       }
       const history = appState.messages[peer.code] || (appState.messages[peer.code] = []);
-      history.push({ ...message, timestamp: Date.now() });
+      if (message.id && history.some((entry) => entry.id === message.id)) return false;
+      history.push({ ...message, timestamp: message.timestamp || Date.now() });
       if (history.length > 300) history.splice(0, history.length - 300);
       saveState();
-      if (activePeerId === peer.id) appendMessage(message);
+      if (activePeerId === peer.id) renderConversation(peer.code);
+      return true;
+    }
+
+    function sendPeerAcknowledgement(peer, id) {
+      if (peer.channel?.readyState !== "open" || typeof id !== "string") return;
+      try {
+        peer.channel.send(JSON.stringify({ type: "message-ack", id, code: appState.identity.code }));
+      } catch (error) {
+        showToast(`Could not confirm delivery to ${peer.name}: ${error.message}`);
+      }
+    }
+
+    function findOwnMessage(id) {
+      const histories = [
+        ...Object.values(appState.messages),
+        ...Object.values(appState.roomMessages)
+      ];
+      for (const history of histories) {
+        const message = history.find((entry) => entry.own && entry.id === id);
+        if (message) return message;
+      }
+      return null;
+    }
+
+    function updateMessageDelivery(id, recipientCode, failed = false) {
+      const message = findOwnMessage(id);
+      if (!message?.delivery || !message.delivery.recipients.includes(recipientCode)) return;
+      message.delivery.failed = message.delivery.failed.filter((code) => code !== recipientCode);
+      if (failed) {
+        if (!message.delivery.delivered.includes(recipientCode)) message.delivery.failed.push(recipientCode);
+      } else if (!message.delivery.delivered.includes(recipientCode)) {
+        message.delivery.delivered.push(recipientCode);
+      }
+      saveState();
+      if (activeView === "room" && appState.roomMessages[activeRoom]?.includes(message)) renderRoomConversation(activeRoom);
+      else if (activeView === "peer" && activePeerId && peers.get(activePeerId)?.code &&
+        appState.messages[peers.get(activePeerId).code]?.includes(message)) {
+        renderConversation(peers.get(activePeerId).code);
+      }
+    }
+
+    function markPeerDeliveriesFailed(recipientCode) {
+      if (!recipientCode) return;
+      let changed = false;
+      for (const histories of [appState.messages, appState.roomMessages]) {
+        for (const history of Object.values(histories)) {
+          for (const message of history) {
+            if (
+              message.own &&
+              message.delivery?.recipients.includes(recipientCode) &&
+              !message.delivery.delivered.includes(recipientCode) &&
+              !message.delivery.failed.includes(recipientCode)
+            ) {
+              message.delivery.failed.push(recipientCode);
+              changed = true;
+            }
+          }
+        }
+      }
+      if (changed) {
+        saveState();
+        if (activeView === "room") renderRoomConversation(activeRoom);
+        else if (activePeerId && peers.get(activePeerId)?.code) renderConversation(peers.get(activePeerId).code);
+      }
+    }
+
+    function renderActiveConversation() {
+      if (activeView === "room") renderRoomConversation(activeRoom);
+      else if (activePeerId && peers.get(activePeerId)?.code) renderConversation(peers.get(activePeerId).code);
+    }
+
+    function setPendingReply(message) {
+      pendingReply = message ? {
+        id: message.id,
+        name: message.name,
+        text: message.text
+      } : null;
+      replyPreview.hidden = !pendingReply;
+      replyPreviewText.textContent = pendingReply ? `Replying to ${pendingReply.name}: ${pendingReply.text}` : "";
+      if (pendingReply) document.getElementById("messageInput").focus();
+    }
+
+    function retryMessage(id) {
+      const message = findOwnMessage(id);
+      if (!message?.delivery) return;
+      const pendingCodes = message.delivery.recipients.filter((code) => !message.delivery.delivered.includes(code));
+      const candidates = activeView === "room"
+        ? [...roomPeers.values()].filter((peer) => pendingCodes.includes(peer.code) && peer.channel?.readyState === "open")
+        : [...peers.values()].filter((peer) =>
+          activePeerId === peer.id &&
+          pendingCodes.includes(peer.code) &&
+          peer.friendCodeMatchesExpected &&
+          peer.channel?.readyState === "open"
+        );
+      const sentCodes = new Set();
+      for (const peer of candidates) {
+        try {
+          const payload = activeView === "room"
+            ? { type: "room-message", room: activeRoom, id: message.id, replyTo: message.replyTo, text: message.text, timestamp: message.timestamp }
+            : { type: "message", id: message.id, replyTo: message.replyTo, text: message.text };
+          peer.channel.send(JSON.stringify(payload));
+          sentCodes.add(peer.code);
+        } catch {
+          message.delivery.failed.push(peer.code);
+        }
+      }
+      message.delivery.failed = message.delivery.failed.filter((code) => !sentCodes.has(code));
+      for (const code of pendingCodes) {
+        if (!sentCodes.has(code) && !message.delivery.failed.includes(code)) message.delivery.failed.push(code);
+      }
+      saveState();
+      renderActiveConversation();
+      if (sentCodes.size === 0) showToast("No connected recipient is available to retry this message yet.");
     }
 
     function handlePeerPayload(peer, raw) {
@@ -1653,8 +2210,44 @@
         showToast(`${peer.name} declined the friend request.`);
         return;
       }
-      if (payload.type === "message" && peer.friendCodeMatchesExpected && typeof payload.text === "string" && payload.text.length <= 500) {
-        recordMessage(peer, { name: peer.name, emoji: peer.emoji, avatar: peer.avatar, text: payload.text, own: false });
+      if (
+        payload.type === "message-ack" &&
+        peer.friendCodeMatchesExpected &&
+        typeof payload.id === "string" &&
+        payload.id.length <= 64 &&
+        payload.code === peer.code
+      ) {
+        updateMessageDelivery(payload.id, payload.code);
+        return;
+      }
+      if (
+        payload.type === "message" &&
+        peer.friendCodeMatchesExpected &&
+        typeof payload.text === "string" &&
+        payload.text.trim() &&
+        payload.text.length <= 500 &&
+        (payload.id === undefined || (typeof payload.id === "string" && payload.id.length <= 64)) &&
+        (payload.replyTo === undefined || payload.replyTo === null || (
+          payload.replyTo &&
+          typeof payload.replyTo.id === "string" &&
+          typeof payload.replyTo.name === "string" &&
+          typeof payload.replyTo.text === "string" &&
+          payload.replyTo.id.length <= 64 &&
+          payload.replyTo.name.length <= 32 &&
+          payload.replyTo.text.length <= 500
+        ))
+      ) {
+        recordMessage(peer, {
+          id: payload.id,
+          replyTo: payload.replyTo,
+          name: peer.name,
+          emoji: peer.emoji,
+          avatar: peer.avatar,
+          text: payload.text,
+          own: false,
+          timestamp: Date.now()
+        });
+        if (typeof payload.id === "string") sendPeerAcknowledgement(peer, payload.id);
         return;
       }
       showToast("Received an unsupported message from a peer.");
@@ -1675,15 +2268,17 @@
       };
       channel.onmessage = (event) => handlePeerPayload(peer, event.data);
       channel.onclose = () => {
+        markPeerDeliveriesFailed(peer.code);
         removePeer(peer);
         showToast(`${peer.name} disconnected.`);
       };
       channel.onerror = () => showToast(`The data channel with ${peer.name} encountered an error.`);
     }
 
-    function createPeerConnection(expectedCode) {
+    async function createPeerConnection(expectedCode) {
       if (!("RTCPeerConnection" in window)) throw new Error("This browser does not support WebRTC peer connections.");
-      const connection = new RTCPeerConnection({ iceServers: [] });
+      await iceServersReady;
+      const connection = new RTCPeerConnection({ iceServers });
       const peer = {
         id: crypto.randomUUID(),
         connection,
@@ -1765,6 +2360,7 @@
 
     async function createInvite() {
       try {
+        await iceServersReady;
         connectionCommitted = false;
         updateProfileName();
         const expectedCode = normalizeFriendCode(document.getElementById("friendCodeInput").value);
@@ -1776,7 +2372,7 @@
           showToast("That's your own friend code. Enter someone else's code.");
           return;
         }
-        const peer = createPeerConnection(expectedCode);
+        const peer = await createPeerConnection(expectedCode);
         pendingConnection = peer;
         const channel = peer.connection.createDataChannel("openchat-chat", { ordered: true });
         attachDataChannel(peer, channel);
@@ -1796,6 +2392,7 @@
 
     async function receiveOffer() {
       try {
+        await iceServersReady;
         connectionCommitted = false;
         const expectedCode = normalizeFriendCode(document.getElementById("friendCodeInput").value);
         if (!expectedCode) {
@@ -1807,7 +2404,7 @@
           return;
         }
         const description = parseSignal(signalText.value, "offer");
-        const peer = createPeerConnection(expectedCode);
+        const peer = await createPeerConnection(expectedCode);
         pendingConnection = peer;
         await peer.connection.setRemoteDescription(description);
         const answer = await peer.connection.createAnswer();
@@ -1837,7 +2434,7 @@
     }
 
     function closeConnectionDialog(keepConnection = false) {
-      connectionBackdrop.hidden = true;
+      closeDialog(connectionBackdrop);
       if (keepConnection) connectionCommitted = true;
       if (pendingConnection && !connectionCommitted && pendingConnection.channel?.readyState !== "open") discardPendingConnection();
       else pendingConnection = null;
@@ -1854,7 +2451,7 @@
       document.getElementById("signalAction").disabled = false;
       document.getElementById("displayNameInput").value = appState.identity.name;
       document.getElementById("friendCodeInput").value = "";
-      connectionBackdrop.hidden = false;
+      openDialog(connectionBackdrop, document.getElementById("displayNameInput"));
     }
 
     document.getElementById("messageForm").addEventListener("submit", (event) => {
@@ -1905,36 +2502,57 @@
           showToast("Shared chat is reconnecting. Your message was not sent.");
           return;
         }
-        const recipients = [...roomMembers.keys()].map((id) => roomPeers.get(id));
+        const recipients = [...roomMembers.entries()].map(([id, member]) => ({
+          peer: roomPeers.get(id),
+          code: member.code
+        }));
         if (!recipients.length) {
           showToast("No other participants are connected to this room yet.");
           return;
         }
-        if (recipients.some((peer) => !peer || peer.channel?.readyState !== "open")) {
-          showToast("Waiting for an encrypted WebRTC connection to every room participant. Your message was not sent.");
-          return;
-        }
+        const timestamp = Date.now();
         const message = {
+          id: crypto.randomUUID(),
           code: appState.identity.code,
           name: updateProfileName(),
           emoji: "?",
           avatar: appState.identity.avatar,
           text,
           own: true,
-          timestamp: Date.now()
+          timestamp,
+          replyTo: pendingReply,
+          delivery: {
+            recipients: [...new Set(recipients.map((recipient) => recipient.code))],
+            delivered: [],
+            failed: []
+          }
         };
-        try {
-          const payload = JSON.stringify({ type: "room-message", room: activeRoom, text, timestamp: message.timestamp });
-          for (const peer of recipients) peer.channel.send(payload);
-          const history = appState.roomMessages[activeRoom] || (appState.roomMessages[activeRoom] = []);
-          history.push(message);
-          if (history.length > 300) history.splice(0, history.length - 300);
-          saveState();
-          appendMessage(message);
-          input.value = "";
-        } catch (error) {
-          showToast("The message could not be sent over the encrypted room connections.");
+        for (const { peer, code } of recipients) {
+          if (!peer || peer.channel?.readyState !== "open") {
+            if (!message.delivery.failed.includes(code)) message.delivery.failed.push(code);
+            continue;
+          }
+          try {
+            peer.channel.send(JSON.stringify({
+              type: "room-message",
+              room: activeRoom,
+              id: message.id,
+              replyTo: message.replyTo,
+              text,
+              timestamp
+            }));
+          } catch {
+            if (!message.delivery.failed.includes(code)) message.delivery.failed.push(code);
+          }
         }
+        const history = appState.roomMessages[activeRoom] || (appState.roomMessages[activeRoom] = []);
+        history.push(message);
+        if (history.length > 300) history.splice(0, history.length - 300);
+        saveState();
+        renderRoomConversation(activeRoom);
+        input.value = "";
+        stopLocalRoomTyping();
+        setPendingReply(null);
         return;
       }
       const peer = peers.get(activePeerId);
@@ -1947,20 +2565,59 @@
         return;
       }
       const message = {
+        id: crypto.randomUUID(),
         name: updateProfileName(),
         emoji: "?",
         avatar: appState.identity.avatar,
         text,
-        own: true
+        own: true,
+        timestamp: Date.now(),
+        replyTo: pendingReply,
+        delivery: { recipients: [peer.code], delivered: [], failed: [] }
       };
       try {
-        peer.channel.send(JSON.stringify({ type: "message", text }));
-      } catch (error) {
-        showToast("The message could not be sent. Check the peer connection and try again.");
-        return;
+        peer.channel.send(JSON.stringify({ type: "message", id: message.id, replyTo: message.replyTo, text }));
+      } catch {
+        message.delivery.failed.push(peer.code);
+        showToast("The message could not be sent. Retry it when the peer connection is available.");
       }
       recordMessage(peer, message);
       input.value = "";
+      stopLocalRoomTyping();
+      setPendingReply(null);
+    });
+
+    document.getElementById("messageInput").addEventListener("input", updateLocalRoomTyping);
+    messageSearch.addEventListener("input", renderActiveConversation);
+    document.getElementById("cancelReplyButton").addEventListener("click", () => setPendingReply(null));
+    conversation.addEventListener("click", (event) => {
+      const retryButton = event.target.closest("[data-retry-message]");
+      if (retryButton) {
+        retryMessage(retryButton.dataset.retryMessage);
+        return;
+      }
+      const replyButton = event.target.closest("[data-reply-to]");
+      if (replyButton) {
+        const history = activeView === "room"
+          ? appState.roomMessages[activeRoom] || []
+          : activePeerId && peers.get(activePeerId)?.code
+            ? appState.messages[peers.get(activePeerId).code] || []
+            : [];
+        const target = history.find((message) => message.id === replyButton.dataset.replyTo);
+        if (target) setPendingReply(target);
+        return;
+      }
+      const quote = event.target.closest("[data-reply-target]");
+      if (quote) {
+        const targetId = quote.dataset.replyTarget;
+        if (messageSearch.value) {
+          messageSearch.value = "";
+          renderActiveConversation();
+        }
+        const target = [...conversation.querySelectorAll("[data-message-id]")]
+          .find((message) => message.dataset.messageId === targetId);
+        target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     });
 
     document.getElementById("roomList").addEventListener("click", (event) => {
@@ -2109,14 +2766,16 @@
     document.getElementById("cancelConnection").addEventListener("click", closeConnectionDialog);
     connectionBackdrop.addEventListener("click", (event) => { if (event.target === connectionBackdrop) closeConnectionDialog(); });
     document.getElementById("displayNameInput").addEventListener("change", updateProfileName);
-    document.getElementById("myCodeButton").addEventListener("click", async () => {
+    async function copyFriendCode() {
       try {
         await navigator.clipboard.writeText(appState.identity.inviteCode);
         showToast("Your friend code was copied. Share it through a channel you trust.");
       } catch (error) {
         showToast(`Your friend code: ${appState.identity.inviteCode}`);
       }
-    });
+    }
+    document.getElementById("myCodeButton").addEventListener("click", copyFriendCode);
+    document.getElementById("copyInviteCodeButton").addEventListener("click", copyFriendCode);
     document.getElementById("editProfileNameButton").addEventListener("click", () => showModal({
       title: "Edit your name",
       description: "",
@@ -2188,19 +2847,47 @@
     });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        if (!connectionBackdrop.hidden) closeConnectionDialog();
-        if (!modalBackdrop.hidden) closeModal();
-        if (!profileBackdrop.hidden) closeProfileDialog();
-        document.getElementById("aboutConnectionBackdrop").hidden = true;
+        const backdrop = currentDialogBackdrop();
+        if (!backdrop) return;
+        event.preventDefault();
+        if (backdrop === connectionBackdrop) closeConnectionDialog();
+        else if (backdrop === modalBackdrop) closeModal();
+        else if (backdrop === profileBackdrop) closeProfileDialog();
+        else closeDialog(backdrop);
+        return;
       }
+      if (event.key === "Tab") trapDialogTab(event);
     });
     document.getElementById("aboutConnectionButton").addEventListener("click", () => {
-      document.getElementById("aboutConnectionBackdrop").hidden = false;
-      document.getElementById("closeAboutConnection").focus();
+      openDialog(
+        document.getElementById("aboutConnectionBackdrop"),
+        document.getElementById("closeAboutConnection")
+      );
     });
     document.getElementById("closeAboutConnection").addEventListener("click", () => {
-      document.getElementById("aboutConnectionBackdrop").hidden = true;
-      document.getElementById("aboutConnectionButton").focus();
+      closeDialog(document.getElementById("aboutConnectionBackdrop"));
+    });
+    document.getElementById("aboutConnectionBackdrop").addEventListener("click", (event) => {
+      if (event.target === event.currentTarget) closeDialog(event.currentTarget);
+    });
+    document.getElementById("settingsButton").addEventListener("click", () => {
+      updateRoomStatus();
+      openDialog(document.getElementById("settingsBackdrop"), document.getElementById("closeSettings"));
+    });
+    document.getElementById("closeSettings").addEventListener("click", () => {
+      closeDialog(document.getElementById("settingsBackdrop"));
+    });
+    document.getElementById("settingsBackdrop").addEventListener("click", (event) => {
+      if (event.target === event.currentTarget) closeDialog(event.currentTarget);
+    });
+    document.getElementById("clearCacheButton").addEventListener("click", () => {
+      if (!window.confirm("Clear this browser's OpenChat profile, contacts, and conversation history? Export a profile first if you may want to restore this data.")) return;
+      try {
+        localStorage.removeItem(storeKey);
+        location.reload();
+      } catch (error) {
+        showToast(`Could not clear OpenChat data: ${error.message}`);
+      }
     });
 
     updateIdentityDisplay();
@@ -2208,7 +2895,23 @@
     renderPeople();
     renderRequests();
     renderRoomConversation(activeRoom);
-    connectRoomServer();
+    if (location.protocol !== "file:") {
+      iceServersReady = fetch("/config.json", { cache: "no-store" })
+        .then((response) => {
+          if (!response.ok) throw new Error(`Network configuration request failed (${response.status}).`);
+          return response.json();
+        })
+        .then((configuration) => {
+          if (!Array.isArray(configuration.iceServers)) throw new Error("Network configuration is invalid.");
+          iceServers.splice(0, iceServers.length, ...configuration.iceServers);
+        })
+        .catch((error) => {
+          showToast(`Could not load network configuration. Continuing without configured ICE servers. ${error.message}`);
+        })
+        .finally(connectRoomServer);
+    } else {
+      connectRoomServer();
+    }
   </script>
 </body>
 </html>
