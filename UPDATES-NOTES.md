@@ -21,5 +21,5 @@ This note records the current engineering choices and user-facing updates. Keep 
 ## Documentation, screenshots, and verification
 
 - The README explains the signaling/message paths, peer-mesh scaling, plain-text policy, ICE trade-offs, local-storage boundary, and why these constraints fit a self-hosted application.
-- `assets/openchat-desktop.png` and `assets/openchat-mobile.png` are generated from the running app with fictional sample profiles and messages. Regenerate them with `npm run capture:screenshots`; the script starts a local test server and launches Chromium.
+- `assets/openchat-desktop-v2.png` and `assets/openchat-mobile-v2.png` are generated from the running app with fictional sample profiles and messages. The versioned filenames intentionally bypass GitHub's cached image URLs after visual updates. Regenerate them with `npm run capture:screenshots`; the script starts a local test server and launches Chromium.
 - Run `npm test` for Node and Chromium integration coverage, `node --check server.js` for server syntax, and `npm run capture:screenshots` when refreshing the README preview assets.

@@ -10,11 +10,11 @@ Run a small Node.js signaling server on a computer you control, then open it in 
 [![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
 [![Node.js 22 or later](https://img.shields.io/badge/Node.js-22%2B-555555.svg)](https://nodejs.org/)
 
-![OpenChat desktop screenshot showing Global Chat, a room conversation, member count, and typing indicator](assets/openchat-desktop.png)
+![OpenChat desktop screenshot showing Global Chat, a room conversation, member count, and typing indicator](assets/openchat-desktop-v2.png)
 
 *Desktop capture of the running app with fictional sample profiles and messages; it is a product screenshot, not a live conversation.*
 
-![OpenChat mobile screenshot showing the responsive chat interface](assets/openchat-mobile.png)
+![OpenChat mobile screenshot showing the responsive chat interface with a tidy icon-only sidebar](assets/openchat-mobile-v2.png)
 
 *The same interface at a narrow mobile viewport. Captures can be regenerated with `npm run capture:screenshots`.*
 

@@ -136,18 +136,18 @@ async function main() {
     await second.page.locator("#messageInput").fill("Typing indicators are temporary and stay peer to peer.");
     await first.page.locator("#typingIndicator").getByText(/is typing/).waitFor({ timeout: 5000 });
     await first.page.screenshot({
-      path: path.join(assets, "openchat-desktop.png"),
+      path: path.join(assets, "openchat-desktop-v2.png"),
       fullPage: true,
       animations: "disabled"
     });
 
     await first.page.setViewportSize({ width: 390, height: 844 });
     await first.page.screenshot({
-      path: path.join(assets, "openchat-mobile.png"),
+      path: path.join(assets, "openchat-mobile-v2.png"),
       fullPage: true,
       animations: "disabled"
     });
-    console.log("Created assets/openchat-desktop.png and assets/openchat-mobile.png.");
+    console.log("Created assets/openchat-desktop-v2.png and assets/openchat-mobile-v2.png.");
   } finally {
     await Promise.all(contexts.map((context) => context.close()));
     if (browser) await browser.close();
