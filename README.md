@@ -56,7 +56,7 @@ OpenChat separates **coordination** from **conversation**:
 | --- | --- | --- |
 | A small Node.js signaling server and browser-native APIs | One self-hosted process avoids a separate application service, user database, and compiled frontend. JavaScript handles the coordination workload; browsers provide WebSocket, WebRTC, Web Crypto, and local storage. | The operator still runs a reachable server for room discovery/signaling. Node.js is not a defense against all connection floods; public deployments need proxy-level connection and IP limits. |
 | WebRTC peer-to-peer room mesh | Message bodies go directly between participants instead of through a central room-message relay. This keeps the server's role smaller and matches the self-hosted model. | Every participant maintains a connection to every other participant. With *n* people, each browser handles *n − 1* connections and the room has *n × (n − 1) ÷ 2* connections overall. Rooms have no fixed participant cap, but device, browser, and network capacity still impose practical limits. |
-| Text-only, bounded message bodies | A 500-character plain-text message keeps chat focused and rendering simple. HTML is never interpreted, and URLs are not converted into links or previews, so chat content cannot embed active markup or images. | Images, file attachments, rich formatting, and clickable links are intentionally not part of a message. Profile pictures are separate profile metadata, not message content. |
+| Text-only, bounded message bodies | A 500-character plain-text message keeps chat focused and rendering simple. HTML is never interpreted, and URLs are not converted into links or previews, so chat content cannot embed active markup or images. | Images, file attachments, rich formatting, and clickable links are not currently supported. Attachment handling is a future design item; profile pictures remain separate profile metadata, not message content. |
 | Optional STUN/TURN instead of a bundled relay | Operators choose the network services appropriate for their deployment; no external ICE provider is silently selected by default. STUN can help discover paths, while TURN can relay transport when direct paths fail. | ICE settings are sent to browsers. TURN adds a service and trust boundary, and credentials should be short-lived. These options improve connectivity but cannot guarantee it. |
 | Local browser storage with an encrypted export | A self-hosted service does not need a central profile database. Users can export a password-protected backup and clear this origin's saved data from Settings. | Active local storage is not encrypted at rest, is tied to this browser, and is not synchronized. Exported backups are encrypted; losing their password means they cannot be restored. |
 
@@ -72,7 +72,7 @@ These are deliberate scope choices, not claims that the system is unlimited or a
 
 ### Browser support
 
-OpenChat targets current stable desktop Chrome, Edge, Firefox, and Safari. Chromium is exercised in the automated browser integration test; the other browsers are best-effort targets and should be tested before relying on a deployment. Mobile browsers may work but are not currently covered by automated tests. Use an up-to-date browser; WebRTC and Web Crypto behavior, and available network paths, vary by browser and environment.
+OpenChat targets current stable desktop Chrome, Edge, Firefox, and Safari. Chromium runs the full automated WebRTC chat flow; Firefox and WebKit receive browser-compatibility and responsive-layout smoke tests. Mobile viewport sizes are covered in automation, but real mobile browsers and devices should still be tested before relying on a deployment. Use an up-to-date browser; WebRTC and Web Crypto behavior, and available network paths, vary by browser and environment.
 
 ### Quick start by device
 
@@ -88,21 +88,6 @@ Download and extract the [repository ZIP](https://github.com/thecathousemp3/Open
 The desktop launchers check for Node.js 22 or later, install the locked dependencies if needed, and start the server. Keep the terminal window open while using OpenChat. On macOS, if double-clicking the `.command` file is blocked, run `bash ./start-macos.command` from Terminal in the extracted folder. On Linux, run `bash ./start-linux.sh` from the extracted project folder (or make it executable once with `chmod +x ./start-linux.sh` and then run `./start-linux.sh`).
 
 OpenChat runs in a mobile browser; it does not currently have a native mobile app or a public hosted instance. See the [mobile quick start](START-MOBILE.md) for how to connect a phone to a self-hosted instance.
-
-### Quick start by device
-
-Download and extract the [repository ZIP](https://github.com/thecathousemp3/OpenChat/archive/refs/heads/main.zip), or clone the repository, then run the launcher for your computer:
-
-| Platform | Launcher |
-| --- | --- |
-| Windows | [start-windows.bat](start-windows.bat) |
-| macOS | [start-macos.command](start-macos.command) |
-| Linux | [start-linux.sh](start-linux.sh) |
-| Phone or tablet | [Mobile quick start](START-MOBILE.md) |
-
-The desktop launchers check for Node.js 22 or later, install the locked dependencies if needed, and start the server. Keep the terminal window open while using OpenChat. On macOS, if double-clicking the `.command` file is blocked, run `bash ./start-macos.command` from Terminal in the extracted folder. On Linux, run `bash ./start-linux.sh` from the extracted project folder (or make it executable once with `chmod +x ./start-linux.sh` and then run `./start-linux.sh`).
-
-OpenChat runs in a mobile browser; it does not currently have a native mobile app or a public hosted instance. The landing page is informational and does not change the app's network requirements. See the [mobile quick start](START-MOBILE.md) for how to connect a phone to a self-hosted instance.
 
 ### Run locally
 
@@ -226,9 +211,9 @@ The app reports connection status and retries ICE negotiation for shared-room pe
 
 ### Voice/video and end-to-end security
 
-Voice and video calling are not implemented yet. WebRTC media uses DTLS-SRTP transport encryption, but OpenChat does not cryptographically authenticate peer identities or protect signaling with an identity-key protocol. Therefore, transport encryption alone is not a verified end-to-end encryption guarantee against a malicious signaling service. Voice/video and stronger authenticated end-to-end security need a separate threat model, protocol and key-verification design, and independent security review before implementation or security claims.
+Voice/video and message attachments are not implemented. WebRTC data and future media transports use browser-negotiated DTLS/DTLS-SRTP for transport protection, but OpenChat does not cryptographically authenticate peer identities or protect signaling with an identity-key protocol. Therefore, transport encryption alone is not a verified end-to-end encryption guarantee against a malicious signaling service, and choosing ChaCha alone would not fix the identity gap.
 
-See the [voice/video security design](CALLS_SECURITY_DESIGN.md) for the threat model and implementation gates. It defines no protocol yet; a mature, reviewed approach and independent security review are prerequisites.
+See the [media security design](CALLS_SECURITY_DESIGN.md) for the threat model and implementation gates covering identity, call permissions, attachment validation and limits, retention, and transfer behavior. It defines no protocol yet; a mature, reviewed approach and independent security review are prerequisites.
 
 ## Local data and backup boundaries
 
@@ -244,7 +229,7 @@ The password-protected export is encrypted, but encryption applies to the export
 - **`server.js`** serves the page and ICE server configuration, and handles room discovery, membership, profile metadata, WebSocket heartbeat cleanup, request limiting, and room WebRTC offer/answer signaling. It does not relay shared-room message bodies.
 - **`ws`** provides the WebSocket server. The browser uses built-in Web APIs for WebRTC, Web Crypto, and local storage.
 - **No user database:** room names and membership are kept in server memory; profile and conversation state are kept separately in each browser profile.
-- **Browser integration tests:** the Node test suite launches Chromium and verifies a two-browser shared-room delivery, typing indicators, plain-text rendering, reply, local-search, and persistence flow.
+- **Browser integration tests:** the Node test suite launches Chromium and verifies a two-browser shared-room delivery, typing indicators, plain-text rendering, reply, local-search, and persistence flow. Firefox and WebKit also receive compatibility and responsive-layout smoke tests.
 
 ### Why there is no fixed room cap—and the trade-off
 
@@ -258,11 +243,12 @@ You operate the room server, but room participants still depend on it to find ro
 
 OpenChat is an early-stage project and has not had an independent security review. Do not use it for sensitive communications or treat it as a secure-messaging product.
 
-- **Transport encryption:** browsers protect WebRTC data channels with DTLS in transit. Shared-room message bodies are not sent through the OpenChat server.
+- **Transport encryption:** browsers protect WebRTC data channels with DTLS in transit, using browser-negotiated cryptographic settings. OpenChat does not provide a ChaCha application-encryption layer or authenticated end-to-end identity protocol. Shared-room message bodies are not sent through the OpenChat server.
 - **Signaling and metadata:** the room server handles membership, names, pictures, invite codes, and WebRTC offers and answers. These are not end-to-end encrypted by an OpenChat identity protocol.
 - **No cryptographic identity verification:** friend codes and profile details can be spoofed. A malicious or compromised signaling server could interfere with connection setup.
 - **Unencrypted device storage:** active browser data is stored locally without encryption. Only exported profile files are encrypted.
 - **No offline delivery:** messages are not queued for disconnected peers.
+- **Media features:** voice/video and message attachments are not implemented. Their security and product requirements are tracked in the [media security design](CALLS_SECURITY_DESIGN.md).
 - **Optional STUN/TURN:** the server operator can configure ICE servers, but those services add infrastructure and privacy considerations; some network configurations may still fail to connect.
 - **No moderation or access control:** anyone who can reach the server can join available rooms or create rooms. There are no accounts, room permissions, abuse reports, or admin console.
 - **Browser data:** profile, contacts, and conversation history are stored in the browser's unencrypted local storage. Settings can clear OpenChat's local data; export a profile first if you may want to restore it.
@@ -281,7 +267,7 @@ The server checks that a WebSocket `Origin` matches its `Host`, but this is **no
 
 ## Development
 
-There is no build step. The CI workflow checks JavaScript syntax, runs the server integration tests, and audits production dependencies.
+There is no build step. The CI workflow checks JavaScript syntax, runs server and browser integration tests across supported engines, and audits production dependencies.
 
 ```sh
 npx playwright install chromium

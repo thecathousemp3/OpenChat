@@ -11,6 +11,10 @@ test("inline app script parses and all static DOM references exist", () => {
   assert.ok(match, "index.html should contain the app script");
   assert.doesNotThrow(() => new vm.Script(match[1]));
   assert.match(html, /About WebRTC and privacy/);
+  assert.match(html, /id="settingsIceStatus"/);
+  assert.match(html, /id="settingsPeerStatus"/);
+  assert.match(html, /browser-negotiated DTLS/);
+  assert.match(html, /does not add ChaCha application-layer encryption/);
   assert.match(html, /DTLS/);
   assert.match(html, /not cryptographically verified/);
   assert.match(html, /command === "help"/);

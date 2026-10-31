@@ -659,6 +659,10 @@
       <h2 id="settingsTitle">Settings</h2>
       <p id="settingsServerStatus">Checking this server...</p>
       <p id="settingsRoomStatus">Room occupancy will appear when connected.</p>
+      <h3>Connection diagnostics</h3>
+      <p id="settingsIceStatus">Checking configured network paths...</p>
+      <p id="settingsPeerStatus">Peer connection status will appear when connected.</p>
+      <p>WebRTC encrypts data in transit using browser-negotiated DTLS. OpenChat does not add ChaCha application-layer encryption or cryptographically authenticate peer identities.</p>
       <p>Profile, contacts, and conversation history are stored in this browser's local storage without encryption. Clearing OpenChat data removes them from this browser; export a profile first if you may want to restore it. This does not clear unrelated browser data or exported profile files.</p>
       <button class="settings-copy-code" id="copyInviteCodeButton" type="button">Copy your friend code</button>
       <div class="modal-actions">
@@ -1436,6 +1440,33 @@
       const roomCount = Object.values(roomCounts).reduce((total, count) => total + count, 0);
       document.getElementById("settingsRoomStatus").textContent =
         `${sharedRooms.length} rooms - ${roomCount} active room memberships on this server`;
+      const hasTurnServer = iceServers.some((server) => {
+        const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+        return urls.some((url) => typeof url === "string" && /^turns?:/i.test(url));
+      });
+      document.getElementById("settingsIceStatus").textContent = iceServers.length === 0
+        ? "No STUN/TURN servers are configured. Some network paths may prevent peer connections."
+        : `${iceServers.length} ICE server ${iceServers.length === 1 ? "entry is" : "entries are"} configured${hasTurnServer ? ", including TURN relay." : ", with no TURN relay."}`;
+      const peerConnections = [...roomPeers.values()];
+      if (peerConnections.length === 0) {
+        document.getElementById("settingsPeerStatus").textContent =
+          roomJoined ? "No other participants in this room to test yet." : "Peer connections will be checked after joining a room.";
+      } else {
+        const iceStateCounts = new Map();
+        for (const peer of peerConnections) {
+          const state = peer.connection.iceConnectionState;
+          iceStateCounts.set(state, (iceStateCounts.get(state) || 0) + 1);
+        }
+        const iceSummary = [...iceStateCounts]
+          .map(([state, count]) => `${count} ${state}`)
+          .join(", ");
+        const connectedChannels = peerConnections.filter((peer) => peer.channel?.readyState === "open").length;
+        const hasUnhealthyPeer = peerConnections.some((peer) =>
+          ["disconnected", "failed"].includes(peer.connection.iceConnectionState)
+        );
+        document.getElementById("settingsPeerStatus").textContent =
+          `Peer channels: ${connectedChannels}/${peerConnections.length} open. ICE: ${iceSummary}.${hasUnhealthyPeer ? " Check both networks or configure reachable STUN/TURN servers." : ""}`;
+      }
     }
 
     function closeRoomMesh() {

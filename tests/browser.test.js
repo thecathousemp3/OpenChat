@@ -4,7 +4,7 @@ const { once } = require("node:events");
 const net = require("node:net");
 const path = require("node:path");
 const test = require("node:test");
-const { chromium } = require("playwright");
+const { chromium, firefox, webkit } = require("playwright");
 
 const root = path.join(__dirname, "..");
 let server;
@@ -39,7 +39,7 @@ test.before(async () => {
   port = await findFreePort();
   server = spawn(process.execPath, [path.join(root, "server.js")], {
     cwd: root,
-    env: { ...process.env, HOST: "127.0.0.1", PORT: String(port) },
+    env: { ...process.env, HOST: "127.0.0.1", PORT: String(port), ICE_SERVERS_JSON: "" },
     stdio: "ignore"
   });
   await waitForServer();
@@ -112,6 +112,8 @@ test("two browsers deliver, reply to, search, and retain room messages", { timeo
 
     const settingsButton = first.getByRole("button", { name: "Settings" });
     await settingsButton.click();
+    assert.match(await first.locator("#settingsIceStatus").textContent(), /No STUN\/TURN servers are configured/);
+    assert.match(await first.locator("#settingsPeerStatus").textContent(), /Peer channels: 1\/1 open/);
     const copyCodeButton = first.getByRole("button", { name: "Copy your friend code" });
     assert.equal(await copyCodeButton.count(), 1);
     await first.keyboard.press("Shift+Tab");
@@ -173,5 +175,42 @@ test("two browsers deliver, reply to, search, and retain room messages", { timeo
   } finally {
     await firstContext.close();
     await secondContext.close();
+  }
+});
+
+test("Firefox and WebKit render diagnostics and fit mobile viewports", { timeout: 90000 }, async () => {
+  for (const [name, browserType] of [["Firefox", firefox], ["WebKit", webkit]]) {
+    const compatibilityBrowser = await browserType.launch();
+    try {
+      const page = await compatibilityBrowser.newPage({ viewport: { width: 390, height: 844 } });
+      const pageErrors = [];
+      page.on("pageerror", (error) => pageErrors.push(error.message));
+      await page.goto(`http://127.0.0.1:${port}/app`);
+
+      for (const width of [320, 360, 390, 768, 1280]) {
+        await page.setViewportSize({ width, height: 844 });
+        const hasHorizontalOverflow = await page.evaluate(() =>
+          document.documentElement.scrollWidth > document.documentElement.clientWidth
+        );
+        assert.equal(hasHorizontalOverflow, false, `${name} overflows horizontally at ${width}px`);
+
+        await page.getByRole("button", { name: "Settings" }).click();
+        const dialog = page.locator("#settingsBackdrop .modal");
+        await dialog.waitFor({ state: "visible" });
+        assert.match(await page.locator("#settingsIceStatus").textContent(), /No STUN\/TURN servers are configured/);
+        assert.match(await page.locator("#settingsPeerStatus").textContent(), /participants|Peer channels/);
+        const bounds = await dialog.evaluate((element) => {
+          const { left, right, top, bottom } = element.getBoundingClientRect();
+          return { left, right, top, bottom, width: window.innerWidth, height: window.innerHeight };
+        });
+        assert.ok(bounds.left >= 0 && bounds.right <= bounds.width, `${name} settings dialog exceeds viewport width at ${width}px`);
+        assert.ok(bounds.top >= 0 && bounds.bottom <= bounds.height, `${name} settings dialog exceeds viewport height at ${width}px`);
+        await page.keyboard.press("Escape");
+      }
+
+      assert.deepEqual(pageErrors, [], `${name} reported browser errors`);
+    } finally {
+      await compatibilityBrowser.close();
+    }
   }
 });

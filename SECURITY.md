@@ -12,7 +12,7 @@ There is no guaranteed response time or service-level agreement. Reports will be
 
 ## Current security boundaries
 
-- Direct and shared-room messages are sent over browser WebRTC data channels protected in transit with DTLS. Shared-room message bodies are not relayed through the server.
+- Direct and shared-room messages are sent over browser WebRTC data channels protected in transit with browser-negotiated DTLS. OpenChat does not add a ChaCha application-encryption layer or select a specific WebRTC cipher suite. Shared-room message bodies are not relayed through the server.
 - Message acknowledgements are sent directly between peers and identify the recipient using the peer's unauthenticated friend code. They are delivery feedback, not proof of identity or a cryptographic receipt. Retries use message IDs for deduplication in current clients; older clients may show duplicate messages.
 - The room server relays membership, profile metadata, and WebRTC offer/answer signaling. Peer identities and room membership are not cryptographically authenticated, so an active malicious signaling server could interfere with connection establishment.
 - WebRTC uses no STUN or TURN services by default. Operators may configure ICE servers with `ICE_SERVERS_JSON`; that configuration, including TURN credentials, is delivered to every browser connected to the instance. Use trusted services and short-lived TURN credentials. NAT and firewall restrictions can still prevent peers from connecting. Rooms have no configured participant cap, but every member connects to every other member; large rooms can overwhelm browser and network resources.
